@@ -1,0 +1,17 @@
+android {
+    ...
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+    // Firebase and AdMob
+    implementation 'com.google.android.gms:play-services-ads:23.0.0'
+    implementation platform('com.google.firebase:firebase-bom:32.8.0')
+    implementation 'com.google.firebase:firebase-database-ktx'
+    implementation 'com.google.firebase:firebase-auth-ktx'
+    
+    // For the animated background (Lottie)
+    implementation 'com.airbnb.android:lottie:6.4.0'
+}
