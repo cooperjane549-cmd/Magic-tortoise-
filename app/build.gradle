@@ -5,8 +5,8 @@ plugins {
 }
 
 android {
-    // This MUST match your folder structure: app/src/main/java/co/ke/magictortoise/
-    namespace 'co.ke.magictortoise' 
+    // FORCE THIS NAMESPACE
+    namespace 'co.ke.magictortoise'
     compileSdk 34
 
     defaultConfig {
@@ -18,7 +18,8 @@ android {
     }
 
     buildFeatures {
-        viewBinding false // We are using findViewById to avoid generation errors
+        // Keeping this false to ensure no conflicts with manual R calls
+        viewBinding false
     }
 
     compileOptions {
