@@ -4,17 +4,19 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.TextView
+import android.widget.VideoView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import co.ke.magictortoise.databinding.ActivityMainBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
 class MainActivity : AppCompatActivity() {
 
-    private var _binding: ActivityMainBinding? = null
-    private val binding get() = _binding!!
-    
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
     
@@ -22,44 +24,35 @@ class MainActivity : AppCompatActivity() {
     private var shellBalance = 0.0
     private var myReferralCode = ""
 
+    // Manual UI references
+    private lateinit var tvBalance: TextView
+    private lateinit var tvStageStatus: TextView
+    private lateinit var tvPayAmount: TextView
+    private lateinit var adProgressBar: ProgressBar
+    private lateinit var backgroundVideo: VideoView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        _binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_main)
+
+        // Initialize UI
+        tvBalance = findViewById(R.id.tvBalance)
+        tvStageStatus = findViewById(R.id.tvStageStatus)
+        tvPayAmount = findViewById(R.id.tvPayAmount)
+        adProgressBar = findViewById(R.id.adProgressBar)
+        backgroundVideo = findViewById(R.id.backgroundVideo)
+
+        val btnWatchAd: Button = findViewById(R.id.btnWatchAd)
+        val btnApplyReferral: Button = findViewById(R.id.btnApplyReferral)
+        val etReferralCode: EditText = findViewById(R.id.etReferralCode)
+        val etAmount: EditText = findViewById(R.id.etAmount)
 
         setupVideoBackground()
         loginAnonymously() 
-        setupAdLogic()
-        setupPurchaseLogic()
-        setupReferralButton()
-    }
 
-    private fun loginAnonymously() {
-        auth.signInAnonymously().addOnSuccessListener { result ->
-            val user = result.user
-            if (user != null) {
-                val uid = user.uid
-                myReferralCode = uid.takeLast(6).uppercase() 
-                db.child("users").child(uid).child("referralCode").setValue(myReferralCode)
-                loadUserBalance(uid)
-            }
-        }
-    }
-
-    private fun loadUserBalance(uid: String) {
-        db.child("users").child(uid).child("balance").get().addOnSuccessListener { snapshot ->
-            val value = snapshot.value
-            if (value is Number) {
-                shellBalance = value.toDouble()
-                binding.tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
-            }
-        }
-    }
-
-    private fun setupAdLogic() {
-        binding.btnWatchAd.setOnClickListener {
+        btnWatchAd.setOnClickListener {
             adCount += 1
-            binding.adProgressBar.progress = adCount
+            adProgressBar.progress = adCount
             
             if (adCount == 15) {
                 updateBalance(1.0, "Stage 2: 10 ads for KES 0.50")
@@ -69,94 +62,102 @@ class MainActivity : AppCompatActivity() {
                 updateBalance(0.5, "Cycle Complete! KES 2.0 earned.")
                 checkAndRewardReferrer() 
                 adCount = 0
-                binding.adProgressBar.progress = 0
+                adProgressBar.progress = 0
             }
         }
-    }
 
-    private fun updateBalance(amount: Double, status: String) {
-        val user = auth.currentUser ?: return
-        shellBalance += amount
-        db.child("users").child(user.uid).child("balance").setValue(shellBalance)
-        binding.tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
-        binding.tvStageStatus.text = status
-    }
-
-    private fun setupReferralButton() {
-        binding.btnApplyReferral.setOnClickListener {
-            val inputCode = binding.etReferralCode.text.toString().trim().uppercase()
+        btnApplyReferral.setOnClickListener {
+            val code: String = etReferralCode.text.toString().trim().uppercase()
             val user = auth.currentUser ?: return@setOnClickListener
 
-            if (inputCode == myReferralCode) {
+            if (code == myReferralCode) {
                 Toast.makeText(this, "You cannot refer yourself!", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            db.child("users").orderByChild("referralCode").equalTo(inputCode).get()
-                .addOnSuccessListener { snapshot ->
-                    if (snapshot.exists()) {
-                        val referrerId = snapshot.children.firstOrNull()?.key
-                        if (referrerId != null) {
-                            db.child("users").child(user.uid).child("referredBy").setValue(referrerId)
-                            binding.btnApplyReferral.isEnabled = false
-                            binding.etReferralCode.isEnabled = false
-                            Toast.makeText(this, "Magic Code Applied!", Toast.LENGTH_SHORT).show()
+            } else {
+                // Explicitly cast 'code' to String to solve ambiguity
+                db.child("users").orderByChild("referralCode").equalTo(code as String).get()
+                    .addOnSuccessListener { snapshot ->
+                        if (snapshot.exists()) {
+                            val referrerId = snapshot.children.firstOrNull()?.key
+                            if (referrerId != null) {
+                                db.child("users").child(user.uid).child("referredBy").setValue(referrerId)
+                                btnApplyReferral.isEnabled = false
+                                etReferralCode.isEnabled = false
+                                Toast.makeText(this, "Magic Code Applied!", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(this, "Invalid Code.", Toast.LENGTH_SHORT).show()
                         }
-                    } else {
-                        Toast.makeText(this, "Invalid Code.", Toast.LENGTH_SHORT).show()
                     }
-                }
-        }
-    }
-
-    private fun checkAndRewardReferrer() {
-        val user = auth.currentUser ?: return
-        db.child("users").child(user.uid).child("hasCompletedFirstCycle").get().addOnSuccessListener { snapshot ->
-            val finished = snapshot.value as? Boolean ?: false
-            if (!finished) {
-                db.child("users").child(user.uid).child("referredBy").get().addOnSuccessListener { refSnap ->
-                    val refUid = refSnap.value as? String
-                    if (refUid != null) {
-                        rewardReferrer(refUid)
-                        db.child("users").child(user.uid).child("hasCompletedFirstCycle").setValue(true)
-                    }
-                }
             }
         }
-    }
 
-    private fun rewardReferrer(refUid: String) {
-        db.child("users").child(refUid).child("balance").get().addOnSuccessListener { snapshot ->
-            val current = (snapshot.value as? Number)?.toDouble() ?: 0.0
-            db.child("users").child(refUid).child("balance").setValue(current + 1.0)
-        }
-    }
-
-    private fun setupPurchaseLogic() {
-        binding.etAmount.addTextChangedListener(object : TextWatcher {
+        etAmount.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                val inputStr = s.toString()
-                val amt = inputStr.toDoubleOrNull() ?: 0.0
-                val total = amt * 0.98
-                binding.tvPayAmount.text = "You pay: KES ${String.format("%.2f", total)}"
+                val input = s.toString().toDoubleOrNull() ?: 0.0
+                val total = input * 0.98
+                tvPayAmount.text = "You pay: KES ${String.format("%.2f", total)}"
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
     }
 
-    private fun setupVideoBackground() {
-        val path = "android.resource://" + packageName + "/" + R.raw.magic_bg
-        binding.backgroundVideo.setVideoURI(Uri.parse(path))
-        binding.backgroundVideo.setOnPreparedListener { mp ->
-            mp.isLooping = true
-            mp.setVolume(0f, 0f)
-            binding.backgroundVideo.start()
+    private fun loginAnonymously() {
+        auth.signInAnonymously().addOnSuccessListener { result ->
+            val uid = result.user?.uid ?: return@addOnSuccessListener
+            myReferralCode = uid.takeLast(6).uppercase() 
+            db.child("users").child(uid).child("referralCode").setValue(myReferralCode)
+            
+            db.child("users").child(uid).child("balance").get().addOnSuccessListener { snapshot ->
+                val bal = snapshot.value
+                if (bal is Number) {
+                    shellBalance = bal.toDouble()
+                    tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
+                }
+            }
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        _binding = null
+    private fun updateBalance(amount: Double, status: String) {
+        val uid = auth.currentUser?.uid ?: return
+        shellBalance += amount
+        db.child("users").child(uid).child("balance").setValue(shellBalance)
+        tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
+        tvStageStatus.text = status
+    }
+
+    private fun checkAndRewardReferrer() {
+        val uid = auth.currentUser?.uid ?: return
+        db.child("users").child(uid).child("hasCompletedFirstCycle").get().addOnSuccessListener { snap ->
+            if (snap.value != true) {
+                db.child("users").child(uid).child("referredBy").get().addOnSuccessListener { refSnap ->
+                    val rUid = refSnap.value as? String
+                    if (rUid != null) {
+                        db.child("users").child(rUid).child("balance").get().addOnSuccessListener { bSnap ->
+                            val current = (bSnap.value as? Number)?.toDouble() ?: 0.0
+                            db.child("users").child(rUid).child("balance").setValue(current + 1.0)
+                            db.child("users").child(uid).child("hasCompletedFirstCycle").setValue(true)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setupVideoBackground() {
+        try {
+            val path = "android.resource://" + packageName + "/" + R.raw.magic_bg
+            backgroundVideo.setVideoURI(Uri.parse(path))
+            backgroundVideo.setOnPreparedListener { mp ->
+                mp.isLooping = true
+                mp.setVolume(0f, 0f)
+                backgroundVideo.start()
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        backgroundVideo.start()
     }
 }
