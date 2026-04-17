@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import co.ke.magictortoise.databinding.ActivityMainBinding
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
 
 class MainActivity : AppCompatActivity() {
@@ -29,27 +30,23 @@ class MainActivity : AppCompatActivity() {
         loginAnonymously() 
         setupAdLogic()
         setupPurchaseLogic()
-        setupReferralButton() // This was missing - now included
+        setupReferralButton()
     }
 
     private fun loginAnonymously() {
         auth.signInAnonymously().addOnSuccessListener { result ->
             val uid = result.user?.uid ?: ""
-            // Create a unique 6-digit code based on their User ID
             myReferralCode = uid.takeLast(6).uppercase() 
-            
-            // Register this user's code in the DB so others can use it
             db.child("users").child(uid).child("referralCode").setValue(myReferralCode)
-            
             loadUserBalance(uid)
         }.addOnFailureListener {
-            Toast.makeText(this, "Connection Failed. Check Internet.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Connection Failed.", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun loadUserBalance(uid: String) {
-        db.child("users").child(uid).child("balance").get().addOnSuccessListener {
-            shellBalance = (it.value as? Double) ?: 0.0
+        db.child("users").child(uid).child("balance").get().addOnSuccessListener { snapshot ->
+            shellBalance = (snapshot.value as? Number)?.toDouble() ?: 0.0
             binding.tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
         }
     }
@@ -90,14 +87,11 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Look for the user who owns the entered code
-            db.child("users").orderByChild("referralCode").equalTo(enteredCode).get()
-                .addOnSuccessListener { snapshot ->
+            db.child("users").orderByChild("referralCode").equalTo(enteredCode as String).get()
+                .addOnSuccessListener { snapshot: DataSnapshot ->
                     if (snapshot.exists()) {
                         val referrerUid = snapshot.children.first().key
-                        // Save who referred the current user
                         db.child("users").child(myUid).child("referredBy").setValue(referrerUid)
-                        
                         binding.btnApplyReferral.isEnabled = false
                         binding.etReferralCode.isEnabled = false
                         Toast.makeText(this, "Magic Code Applied!", Toast.LENGTH_SHORT).show()
@@ -110,10 +104,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkAndRewardReferrer() {
         val uid = auth.currentUser?.uid ?: return
-        
-        db.child("users").child(uid).child("hasCompletedFirstCycle").get().addOnSuccessListener {
-            val alreadyFinished = it.value as? Boolean ?: false
-            
+        db.child("users").child(uid).child("hasCompletedFirstCycle").get().addOnSuccessListener { snapshot ->
+            val alreadyFinished = snapshot.value as? Boolean ?: false
             if (!alreadyFinished) {
                 db.child("users").child(uid).child("referredBy").get().addOnSuccessListener { refSnap ->
                     val referrerUid = refSnap.value as? String
@@ -127,8 +119,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun rewardReferrer(referrerUid: String) {
-        db.child("users").child(referrerUid).child("balance").get().addOnSuccessListener {
-            val oldBalance = (it.value as? Double) ?: 0.0
+        db.child("users").child(referrerUid).child("balance").get().addOnSuccessListener { snapshot ->
+            val oldBalance = (snapshot.value as? Number)?.toDouble() ?: 0.0
             db.child("users").child(referrerUid).child("balance").setValue(oldBalance + 1.0)
             Toast.makeText(this, "Referral Bonus Processed!", Toast.LENGTH_SHORT).show()
         }
@@ -147,13 +139,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupVideoBackground() {
-        val videoPath = "android.resource://" + packageName + "/" + R.raw.magic_bg
-        val uri = Uri.parse(videoPath)
-        binding.backgroundVideo.setVideoURI(uri)
-        binding.backgroundVideo.setOnPreparedListener { mp ->
-            mp.isLooping = true
-            mp.setVolume(0f, 0f)
-            binding.backgroundVideo.start()
+        try {
+            val videoPath = "android.resource://" + packageName + "/" + R.raw.magic_bg
+            val uri = Uri.parse(videoPath)
+            binding.backgroundVideo.setVideoURI(uri)
+            binding.backgroundVideo.setOnPreparedListener { mp ->
+                mp.isLooping = true
+                mp.setVolume(0f, 0f)
+                binding.backgroundVideo.start()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
