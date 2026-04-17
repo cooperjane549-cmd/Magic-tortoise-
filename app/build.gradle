@@ -5,7 +5,8 @@ plugins {
 }
 
 android {
-    namespace 'co.ke.magictortoise'
+    // This MUST match your folder structure: app/src/main/java/co/ke/magictortoise/
+    namespace 'co.ke.magictortoise' 
     compileSdk 34
 
     defaultConfig {
@@ -16,9 +17,8 @@ android {
         versionName "1.0"
     }
 
-    // Explicitly set to false to avoid Unresolved reference errors
     buildFeatures {
-        viewBinding false
+        viewBinding false // We are using findViewById to avoid generation errors
     }
 
     compileOptions {
