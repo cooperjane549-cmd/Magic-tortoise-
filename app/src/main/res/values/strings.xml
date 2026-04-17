@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Magic Tortoise</string>
+    <string name="buy_airtime">Buy Airtime (2% Discount)</string>
+    <string name="watch_ad">Watch Magic Ad</string>
+    <string name="shell_balance">Shell Balance</string>
+    <string name="daily_path">The Daily Path</string>
+    <string name="withdrawal_min">Min Withdrawal: KES 3.00</string>
+</resources>
