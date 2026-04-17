@@ -2,111 +2,96 @@ package co.ke.magictortoise
 
 import android.net.Uri
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.ads.*
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import co.ke.magictortoise.R
 
 class MainActivity : AppCompatActivity() {
 
+    private var rewardedAd: RewardedAd? = null
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
     
     private var adCount = 0
     private var shellBalance = 0.0
-    private var myReferralCode = ""
+    private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val tvBalance: TextView = findViewById(R.id.tvBalance)
-        val tvStageStatus: TextView = findViewById(R.id.tvStageStatus)
-        val tvPayAmount: TextView = findViewById(R.id.tvPayAmount)
-        val adProgressBar: ProgressBar = findViewById(R.id.adProgressBar)
-        val backgroundVideo: VideoView = findViewById(R.id.backgroundVideo)
-        val btnWatchAd: Button = findViewById(R.id.btnWatchAd)
-        val btnApplyReferral: Button = findViewById(R.id.btnApplyReferral)
-        val etReferralCode: EditText = findViewById(R.id.etReferralCode)
-        val etAmount: EditText = findViewById(R.id.etAmount)
+        // Initialize Ads
+        MobileAds.initialize(this) {}
+        loadRewardedAd()
 
-        // setup Video
+        // UI References
+        val tvBalance = findViewById<TextView>(R.id.tvBalance)
+        val tvStageStatus = findViewById<TextView>(R.id.tvStageStatus)
+        val adProgressBar = findViewById<ProgressBar>(R.id.adProgressBar)
+        val btnWatchAd = findViewById<Button>(R.id.btnWatchAd)
+        val backgroundVideo = findViewById<VideoView>(R.id.backgroundVideo)
+
+        // Video Background
         val path = "android.resource://" + packageName + "/" + R.raw.magic_bg
         backgroundVideo.setVideoURI(Uri.parse(path))
-        backgroundVideo.setOnPreparedListener { mp ->
-            mp.isLooping = true
-            mp.setVolume(0f, 0f)
-            backgroundVideo.start()
-        }
+        backgroundVideo.setOnPreparedListener { it.isLooping = true; it.setVolume(0f,0f); backgroundVideo.start() }
 
-        // Login
+        // Fetch User Data
         auth.signInAnonymously().addOnSuccessListener { result ->
-            val uid = result.user?.uid ?: ""
-            if (uid.isNotEmpty()) {
-                myReferralCode = uid.takeLast(6).uppercase() 
-                db.child("users").child(uid).child("referralCode").setValue(myReferralCode)
-                
-                db.child("users").child(uid).child("balance").get().addOnSuccessListener { snapshot ->
-                    val bal = (snapshot.value as? Number)?.toDouble() ?: 0.0
-                    shellBalance = bal
-                    tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
-                }
-            }
-        }
-
-        btnWatchAd.setOnClickListener {
-            adCount++
-            adProgressBar.progress = adCount
-            
-            if (adCount == 15) {
-                shellBalance += 1.0
-                tvStageStatus.text = "Stage 2: 10 ads for KES 0.50"
-            } else if (adCount == 25) {
-                shellBalance += 0.5
-                tvStageStatus.text = "Stage 3: 10 ads for KES 0.50 bonus"
-            } else if (adCount == 35) {
-                shellBalance += 0.5
-                tvStageStatus.text = "Cycle Complete! KES 2.0 earned."
-                adCount = 0
-                adProgressBar.progress = 0
-            }
-            
-            val uid = auth.currentUser?.uid
-            if (uid != null) {
-                db.child("users").child(uid).child("balance").setValue(shellBalance)
+            val uid = result.user?.uid ?: return@addOnSuccessListener
+            db.child("users").child(uid).child("balance").get().addOnSuccessListener {
+                shellBalance = (it.value as? Number)?.toDouble() ?: 0.0
                 tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
             }
         }
 
-        btnApplyReferral.setOnClickListener {
-            val code = etReferralCode.text.toString().trim().uppercase()
-            val uid = auth.currentUser?.uid ?: ""
-
-            if (code == myReferralCode) {
-                Toast.makeText(this, "Self-referral blocked.", Toast.LENGTH_SHORT).show()
-            } else if (code.isNotEmpty()) {
-                db.child("users").orderByChild("referralCode").equalTo(code).get()
-                    .addOnSuccessListener { snapshot ->
-                        val referrerId = snapshot.children.firstOrNull()?.key
-                        if (referrerId != null) {
-                            db.child("users").child(uid).child("referredBy").setValue(referrerId)
-                            btnApplyReferral.isEnabled = false
-                            Toast.makeText(this, "Success!", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+        btnWatchAd.setOnClickListener {
+            if (rewardedAd != null) {
+                rewardedAd?.show(this) { rewardItem ->
+                    // THE BRAKES: Only triggered if ad is finished
+                    processReward()
+                }
+            } else {
+                Toast.makeText(this, "Ad is loading, try again...", Toast.LENGTH_SHORT).show()
+                loadRewardedAd()
             }
         }
+    }
 
-        etAmount.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                val amt = s.toString().toDoubleOrNull() ?: 0.0
-                tvPayAmount.text = "You pay: KES ${String.format("%.2f", amt * 0.98)}"
-            }
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+    private fun loadRewardedAd() {
+        val adRequest = AdRequest.Builder().build()
+        RewardedAd.load(this, AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
+            override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad }
+            override fun onAdFailedToLoad(adError: LoadAdError) { rewardedAd = null }
         })
+    }
+
+    private fun processReward() {
+        adCount++
+        val tvBalance = findViewById<TextView>(R.id.tvBalance)
+        val tvStageStatus = findViewById<TextView>(R.id.tvStageStatus)
+        val adProgressBar = findViewById<ProgressBar>(R.id.adProgressBar)
+
+        // Real Math Logic
+        if (adCount <= 15) {
+            shellBalance += 0.07 // 15 ads approx KES 1.00
+            tvStageStatus.text = "Stage 1: Progress $adCount/15"
+        } else {
+            shellBalance += 0.05
+            tvStageStatus.text = "Bonus Stage active!"
+        }
+
+        adProgressBar.progress = adCount
+        tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
+        
+        // Sync to Firebase
+        val uid = auth.currentUser?.uid
+        if (uid != null) db.child("users").child(uid).child("balance").setValue(shellBalance)
+        
+        loadRewardedAd() // Load next ad immediately
     }
 }
