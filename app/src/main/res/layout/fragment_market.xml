@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/premium_black">
+    android:background="@color/cyber_black">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,51 +14,125 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="MARKETPLACE"
-            android:textColor="@color/neon_red"
+            android:text="BUY AIRTIME"
+            android:textColor="@color/primary_red"
             android:textSize="22sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Get 100 Airtime for 98 KES"
-            android:textColor="@color/gray_text"
-            android:layout_marginBottom="20dp" />
+            android:text="Choose your amount"
+            android:textColor="@color/text_gray"
+            android:layout_marginTop="5dp"/>
 
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="16dp"
-            app:cardBackgroundColor="@color/dark_red_card">
-            
+            android:layout_marginTop="25dp"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/glass_white">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="20dp"
+                android:gravity="center">
 
-                <EditText
-                    android:id="@+id/etBuyAmount"
-                    android:layout_width="match_parent"
-                    android:layout_height="55dp"
-                    android:hint="Enter Amount"
-                    android:textColor="#FFFFFF"
-                    android:textColorHint="#66FFFFFF"
-                    android:background="@drawable/edittext_border"
-                    android:padding="10dp"
-                    android:inputType="number" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <Button
-                    android:id="@+id/btnPurchase"
-                    android:layout_width="match_parent"
-                    android:layout_height="55dp"
-                    android:layout_marginTop="20dp"
-                    android:text="BUY VIA MPESA"
-                    android:backgroundTint="@color/neon_red"
-                    android:textStyle="bold" />
+                    <ImageButton
+                        android:id="@+id/btnMinus"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@android:drawable/ic_input_delete"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        app:tint="@color/text_gray"/>
+
+                    <TextView
+                        android:id="@+id/tvPurchaseAmount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="100.00"
+                        android:textColor="@color/white"
+                        android:textSize="42sp"
+                        android:textStyle="bold"
+                        android:layout_marginHorizontal="20dp"/>
+
+                    <ImageButton
+                        android:id="@+id/btnPlus"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@android:drawable/ic_input_add"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        app:tint="@color/text_gray"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvRemainingBalance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Balance: 0.00 SHELLS"
+                    android:textColor="@color/text_gray"
+                    android:textSize="12sp"
+                    android:layout_marginTop="10dp"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
+
+        <RadioGroup
+            android:id="@+id/rgPaymentMethod"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp">
+
+            <RadioButton
+                android:id="@+id/rbMpesa"
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:text="M-Pesa STK Push (Pay 98%)"
+                android:textColor="@color/white"
+                android:background="@drawable/radio_selector_glass"
+                android:button="@null"
+                android:padding="15dp"
+                android:layout_marginBottom="10dp"
+                android:checked="true"/>
+
+            <RadioButton
+                android:id="@+id/rbShells"
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:text="Use Shells Balance"
+                android:textColor="@color/white"
+                android:background="@drawable/radio_selector_glass"
+                android:button="@null"
+                android:padding="15dp"/>
+        </RadioGroup>
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/swipeConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:valueFrom="0"
+            android:valueTo="100"
+            app:thumbColor="@color/primary_red"
+            app:trackColorInactive="@color/glass_white"
+            app:trackColorActive="@color/primary_red" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Swipe to Confirm Purchase"
+            android:gravity="center"
+            android:textColor="@color/text_gray"
+            android:layout_marginTop="5dp"
+            android:textSize="12sp"/>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
