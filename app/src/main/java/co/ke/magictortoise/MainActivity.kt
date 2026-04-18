@@ -10,17 +10,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // This links to the XML you just shared
+        // Links to your ConstraintLayout XML
         setContentView(R.layout.activity_main)
 
-        // 1. IMPORTANT: Initialize Ads so "Watch Ads" doesn't fail silently
-        MobileAds.initialize(this) { status -> }
+        // 1. Initialize Ads Engine immediately
+        MobileAds.initialize(this) { initializationStatus ->
+            // Optional: You can log here to see if ads are ready
+        }
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
 
-        // 2. Set the default screen (Dashboard)
+        // 2. Set the default screen (Dashboard) only if it's the first launch
         if (savedInstanceState == null) {
-            loadFragment(DashboardFragment())
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.nav_host_fragment, DashboardFragment())
+                .commit()
         }
 
         // 3. Setup Navigation
@@ -32,13 +36,16 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_support -> SupportFragment()
                 else -> DashboardFragment()
             }
+            
+            // Call our safe replacement function
             loadFragment(fragment)
             true
         }
     }
 
     private fun loadFragment(fragment: Fragment) {
-        // We use the ID "nav_host_fragment" from your ConstraintLayout XML
+        // Using the ID "nav_host_fragment" from your activity_main.xml
+        // Adding 'addToBackStack(null)' can help prevent crashes during quick taps
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
             .replace(R.id.nav_host_fragment, fragment)
