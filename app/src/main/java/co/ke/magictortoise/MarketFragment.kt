@@ -6,88 +6,36 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
-import com.google.android.gms.ads.*
-import com.google.android.gms.ads.nativead.NativeAd
-import com.google.android.gms.ads.nativead.NativeAdView
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
-class DashboardFragment : Fragment() {
+class MarketFragment : Fragment() {
 
-    private var rewardedAd: RewardedAd? = null
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
-    private var shellBalance = 0.0
-    private var adCycle = 0
-
-    // Test IDs for immediate running
-    private val REWARDED_ID = "ca-app-pub-3940256099942544/5224354917"
-    private val NATIVE_ID = "ca-app-pub-3940256099942544/2247696110"
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val root = inflater.inflate(R.layout.fragment_dashboard, container, false)
-        
-        val tvBalance = root.findViewById<TextView>(R.id.tvBalance)
-        val tvAdCount = root.findViewById<TextView>(R.id.tvAdCount)
-        val progressBar = root.findViewById<ProgressBar>(R.id.adProgressBar)
-        val btnWatchAd = root.findViewById<Button>(R.id.btnWatchAd)
+        val root = inflater.inflate(R.layout.fragment_market, container, false)
 
-        val uid = auth.currentUser?.uid ?: return root
-        db.child("users").child(uid).get().addOnSuccessListener {
-            shellBalance = (it.child("balance").value as? Number)?.toDouble() ?: 0.0
-            adCycle = (it.child("adCycle").value as? Number)?.toInt() ?: 0
-            updateUI(tvBalance, tvAdCount, progressBar)
+        val etAmount = root.findViewById<EditText>(R.id.etBuyAmount)
+        val btnBuy = root.findViewById<Button>(R.id.btnPurchase)
+
+        btnBuy.setOnClickListener {
+            val amountStr = etAmount.text.toString()
+            val amount = amountStr.toDoubleOrNull() ?: 0.0
+
+            if (amount < 10.0) {
+                Toast.makeText(context, "Minimum is KES 10", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val uid = auth.currentUser?.uid ?: return@setOnClickListener
+            val request = mapOf("uid" to uid, "amount" to amount, "status" to "pending")
+            db.child("buy_queue").push().setValue(request).addOnSuccessListener {
+                Toast.makeText(context, "STK Push Sent!", Toast.LENGTH_SHORT).show()
+                etAmount.text.clear()
+            }
         }
-
-        loadRewardedAd()
-        loadNativeAd(root)
-
-        btnWatchAd.setOnClickListener {
-            rewardedAd?.show(requireActivity()) { 
-                processReward(uid, tvBalance, tvAdCount, progressBar) 
-            } ?: Toast.makeText(context, "Loading Magic...", Toast.LENGTH_SHORT).show()
-        }
-
         return root
-    }
-
-    private fun loadRewardedAd() {
-        RewardedAd.load(requireContext(), REWARDED_ID, AdRequest.Builder().build(), object : RewardedAdLoadCallback() {
-            override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad }
-            override fun onAdFailedToLoad(e: LoadAdError) { rewardedAd = null }
-        })
-    }
-
-    private fun loadNativeAd(root: View) {
-        val adLoader = AdLoader.Builder(requireContext(), NATIVE_ID)
-            .forNativeAd { nativeAd ->
-                val adView = root.findViewById<NativeAdView>(R.id.native_ad_view)
-                adView.headlineView = adView.findViewById(R.id.ad_headline)
-                adView.bodyView = adView.findViewById(R.id.ad_body)
-                adView.callToActionView = adView.findViewById(R.id.ad_call_to_action)
-
-                (adView.headlineView as TextView).text = nativeAd.headline
-                (adView.bodyView as TextView).text = nativeAd.body
-                (adView.callToActionView as Button).text = nativeAd.callToAction
-                adView.setNativeAd(nativeAd)
-            }.build()
-        adLoader.loadAd(AdRequest.Builder().build())
-    }
-
-    private fun processReward(uid: String, bal: TextView, count: TextView, bar: ProgressBar) {
-        adCycle++
-        val reward = if (adCycle <= 15) 0.067 else 0.05
-        shellBalance += reward
-        db.child("users").child(uid).updateChildren(mapOf("balance" to shellBalance, "adCycle" to adCycle))
-        updateUI(bal, count, bar)
-        loadRewardedAd()
-    }
-
-    private fun updateUI(bal: TextView, count: TextView, bar: ProgressBar) {
-        bal.text = "KES ${String.format("%.2f", shellBalance)}"
-        count.text = "Progress: $adCycle/35 Ads"
-        bar.progress = adCycle
     }
 }
