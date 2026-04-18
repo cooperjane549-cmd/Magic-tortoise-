@@ -22,6 +22,7 @@ class DashboardFragment : Fragment() {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
     
+    // YOUR IDs
     private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
     private val NATIVE_ID = "ca-app-pub-3940256099942544/2247696110" 
 
@@ -55,9 +56,15 @@ class DashboardFragment : Fragment() {
         loadNativeAd(root)
 
         btnWatch.setOnClickListener {
-            rewardedAd?.show(requireActivity()) { 
-                updateReward(uid) 
-            } ?: Toast.makeText(context, "Magic loading...", Toast.LENGTH_SHORT).show()
+            if (rewardedAd != null) {
+                rewardedAd?.show(requireActivity()) { 
+                    updateReward(uid) 
+                }
+            } else {
+                // BETTER NOTIFICATION: Tells user it's actually working/loading
+                Toast.makeText(requireContext(), "Magic is loading... please wait 5 seconds", Toast.LENGTH_SHORT).show()
+                loadAd() // Try to reload if it was null
+            }
         }
 
         cardOffers?.setOnClickListener {
@@ -69,9 +76,16 @@ class DashboardFragment : Fragment() {
     }
 
     private fun loadAd() {
-        RewardedAd.load(requireContext(), AD_UNIT_ID, AdRequest.Builder().build(), object : RewardedAdLoadCallback() {
-            override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad }
-            override fun onAdFailedToLoad(e: LoadAdError) { rewardedAd = null }
+        val adRequest = AdRequest.Builder().build()
+        RewardedAd.load(requireContext(), AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
+            override fun onAdLoaded(ad: RewardedAd) { 
+                rewardedAd = ad 
+            }
+            override fun onAdFailedToLoad(e: LoadAdError) { 
+                rewardedAd = null
+                // LOGGING THE ERROR: This will tell you in Logcat WHY it failed
+                android.util.Log.e("ADMOB_ERROR", e.message)
+            }
         })
     }
 
@@ -79,15 +93,17 @@ class DashboardFragment : Fragment() {
         val adLoader = AdLoader.Builder(requireContext(), NATIVE_ID)
             .forNativeAd { nativeAd ->
                 val adView = root.findViewById<NativeAdView>(R.id.native_ad_view)
-                adView?.visibility = View.VISIBLE
-                adView?.headlineView = adView?.findViewById(R.id.ad_headline)
-                adView?.bodyView = adView?.findViewById(R.id.ad_body)
-                adView?.callToActionView = adView?.findViewById(R.id.ad_call_to_action)
+                if (adView != null) {
+                    adView.visibility = View.VISIBLE
+                    adView.headlineView = adView.findViewById(R.id.ad_headline)
+                    adView.bodyView = adView.findViewById(R.id.ad_body)
+                    adView.callToActionView = adView.findViewById(R.id.ad_call_to_action)
 
-                (adView?.headlineView as? TextView)?.text = nativeAd.headline
-                (adView?.bodyView as? TextView)?.text = nativeAd.body
-                (adView?.callToActionView as? Button)?.text = nativeAd.callToAction
-                adView?.setNativeAd(nativeAd)
+                    (adView.headlineView as? TextView)?.text = nativeAd.headline
+                    (adView.bodyView as? TextView)?.text = nativeAd.body
+                    (adView.callToActionView as? Button)?.text = nativeAd.callToAction
+                    adView.setNativeAd(nativeAd)
+                }
             }.build()
         adLoader.loadAd(AdRequest.Builder().build())
     }
@@ -101,6 +117,8 @@ class DashboardFragment : Fragment() {
         updates["adCycle"] = nextCycle
         
         db.child("users").child(uid).updateChildren(updates).addOnSuccessListener {
+            Toast.makeText(requireContext(), "Shells Collected!", Toast.LENGTH_SHORT).show()
+            rewardedAd = null // Reset so we load a fresh one
             loadAd() 
         }
     }
