@@ -1,6 +1,5 @@
 package co.ke.magictortoise
 
-import android.net.Uri
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -16,7 +15,7 @@ class MainActivity : AppCompatActivity() {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
     
-    private var adCount = 0
+    private var adsWatched = 0
     private var shellBalance = 0.0
     private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
 
@@ -28,90 +27,77 @@ class MainActivity : AppCompatActivity() {
         loadRewardedAd()
 
         val tvBalance = findViewById<TextView>(R.id.tvBalance)
-        val tvUserPhone = findViewById<TextView>(R.id.tvUserPhone)
+        val tvAdProgress = findViewById<TextView>(R.id.tvAdProgress)
+        val adProgressBar = findViewById<ProgressBar>(R.id.adProgressBar)
         val btnWatchAd = findViewById<Button>(R.id.btnWatchAd)
         val btnBuy = findViewById<Button>(R.id.btnBuy)
         val etAmount = findViewById<EditText>(R.id.etAmount)
 
-        // Setup background
-        setupVideoBackground()
-
-        // 1. Authenticate and Get Registered Data
-        auth.signInAnonymously().addOnSuccessListener { result ->
-            val uid = result.user?.uid ?: return@addOnSuccessListener
+        // Load User Data from Firebase
+        val uid = auth.currentUser?.uid ?: "anonymous"
+        db.child("users").child(uid).get().addOnSuccessListener {
+            shellBalance = (it.child("balance").value as? Number)?.toDouble() ?: 0.0
+            adsWatched = (it.child("adsWatched").value as? Number)?.toInt() ?: 0
             
-            // Look for User Info in Firebase
-            db.child("users").child(uid).get().addOnSuccessListener { snapshot ->
-                shellBalance = (snapshot.child("balance").value as? Number)?.toDouble() ?: 0.0
-                val phone = snapshot.child("phone").value?.toString() ?: "No Number Linked"
-                
-                tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
-                tvUserPhone.text = "Linked: $phone"
-            }
+            updateUI(tvBalance, tvAdProgress, adProgressBar)
         }
 
         btnWatchAd.setOnClickListener {
             if (rewardedAd != null) {
-                rewardedAd?.show(this) { processReward() }
+                rewardedAd?.show(this) { processReward(tvBalance, tvAdProgress, adProgressBar) }
             } else {
-                Toast.makeText(this, "Fetching Magic... Wait a second.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Searching for magic... wait.", Toast.LENGTH_SHORT).show()
                 loadRewardedAd()
             }
         }
 
-        // 2. Withdrawal Logic (The Firebase "API")
         btnBuy.setOnClickListener {
-            val amountStr = etAmount.text.toString()
-            val amount = amountStr.toDoubleOrNull() ?: 0.0
-            val uid = auth.currentUser?.uid ?: return@setOnClickListener
-
-            if (amount < 5.0) {
-                Toast.makeText(this, "Minimum withdrawal is KES 5.00", Toast.LENGTH_SHORT).show()
+            val amount = etAmount.text.toString().toDoubleOrNull() ?: 0.0
+            if (amount < 3.0) {
+                Toast.makeText(this, "Minimum is KES 3.00", Toast.LENGTH_SHORT).show()
             } else if (amount > shellBalance) {
-                Toast.makeText(this, "Insufficient Shell Balance", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Not enough shells!", Toast.LENGTH_SHORT).show()
             } else {
-                // SEND TO FIREBASE "API" (Withdrawal Queue)
-                val request = mapOf(
+                // Send Request to Firebase Withdrawals API
+                val withdrawalRequest = mapOf(
+                    "uid" to uid,
                     "amount" to amount,
-                    "status" to "pending",
-                    "timestamp" to System.currentTimeMillis()
+                    "timestamp" to System.currentTimeMillis(),
+                    "status" to "pending"
                 )
-                
-                db.child("withdrawals").child(uid).push().setValue(request).addOnSuccessListener {
-                    // Subtract from local balance
+                db.child("withdrawals").push().setValue(withdrawalRequest).addOnSuccessListener {
                     shellBalance -= amount
                     db.child("users").child(uid).child("balance").setValue(shellBalance)
-                    tvBalance.text = "KES ${String.format("%.2f", shellBalance)}"
+                    updateUI(tvBalance, tvAdProgress, adProgressBar)
                     etAmount.text.clear()
-                    Toast.makeText(this, "Request Sent! Processing Airtime...", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Magic is happening! Airtime processing.", Toast.LENGTH_LONG).show()
                 }
             }
         }
     }
 
-    private fun setupVideoBackground() {
-        val videoView = findViewById<VideoView>(R.id.backgroundVideo)
-        val uri = Uri.parse("android.resource://" + packageName + "/" + R.raw.magic_bg)
-        videoView.setVideoURI(uri)
-        videoView.setOnPreparedListener { it.isLooping = true; it.setVolume(0f, 0f); videoView.start() }
+    private fun updateUI(balance: TextView, progressText: TextView, bar: ProgressBar) {
+        balance.text = "KES ${String.format("%.2f", shellBalance)}"
+        progressText.text = "Ads Watched: $adsWatched/15"
+        bar.progress = adsWatched % 16
     }
 
     private fun loadRewardedAd() {
         RewardedAd.load(this, AD_UNIT_ID, AdRequest.Builder().build(), object : RewardedAdLoadCallback() {
             override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad }
-            override fun onAdFailedToLoad(error: LoadAdError) { rewardedAd = null }
+            override fun onAdFailedToLoad(e: LoadAdError) { rewardedAd = null }
         })
     }
 
-    private fun processReward() {
-        adCount++
-        shellBalance += 0.07 // 15 ads = KES 1.05
-        
-        findViewById<TextView>(R.id.tvBalance).text = "KES ${String.format("%.2f", shellBalance)}"
-        findViewById<ProgressBar>(R.id.adProgressBar).progress = adCount % 16
+    private fun processReward(balance: TextView, progressText: TextView, bar: ProgressBar) {
+        adsWatched++
+        shellBalance += 0.07 // Payout per ad
         
         val uid = auth.currentUser?.uid ?: return
         db.child("users").child(uid).child("balance").setValue(shellBalance)
+        db.child("users").child(uid).child("adsWatched").setValue(adsWatched)
+        
+        updateUI(balance, progressText, bar)
         loadRewardedAd()
     }
 }
