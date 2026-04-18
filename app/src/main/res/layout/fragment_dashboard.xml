@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#081209">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/tvTestimonial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Recent Payout: User +254...046 redeemed KES 50.00"
+            android:textColor="#A8E063"
+            android:textSize="12sp"
+            android:background="#1AFFFFFF"
+            android:padding="8dp"
+            android:gravity="center"
+            android:layout_marginBottom="15dp"/>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            app:cardCornerRadius="24dp"
+            app:cardBackgroundColor="@color/tortoise_green_dark">
+            
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="25dp">
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Total Shell Balance"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvBalance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="KES 0.00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="36sp"
+                    android:textStyle="bold"
+                    android:layout_centerInParent="true"/>
+
+                <TextView
+                    android:id="@+id/tvUserPhone"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="+254789574046"
+                    android:textColor="#66FFFFFF"
+                    android:layout_alignParentBottom="true"
+                    android:layout_alignParentEnd="true"/>
+            </RelativeLayout>
+        </androidx.cardview.widget.CardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ad Cycle Progress (Goal: KES 2.00)"
+            android:textColor="@color/magic_gold"
+            android:layout_marginTop="25dp"
+            android:textStyle="bold"/>
+
+        <ProgressBar
+            android:id="@+id/adProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="12dp"
+            android:layout_marginTop="10dp"
+            android:max="35"
+            android:progressDrawable="@drawable/custom_progress_bar" />
+
+        <TextView
+            android:id="@+id/tvAdCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0/35 Ads Watched"
+            android:textColor="#FFFFFF"
+            android:layout_gravity="end"
+            android:layout_marginTop="5dp"/>
+
+        <Button
+            android:id="@+id/btnWatchAd"
+            android:layout_width="match_parent"
+            android:layout_height="65dp"
+            android:layout_marginTop="20dp"
+            android:text="WATCH MAGIC AD"
+            android:backgroundTint="@color/tortoise_green_light"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Top Magic Earners"
+            android:textColor="@color/magic_gold"
+            android:layout_marginTop="30dp"
+            android:textStyle="bold"/>
+
+        <LinearLayout
+            android:id="@+id/leaderboardContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="10dp"
+            android:background="#11FFFFFF"
+            android:padding="10dp">
+            </LinearLayout>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
