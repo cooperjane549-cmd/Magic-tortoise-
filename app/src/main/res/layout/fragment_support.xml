@@ -3,42 +3,43 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#081209"
-    android:padding="20dp"
+    android:background="@color/premium_black"
+    android:padding="25dp"
     android:gravity="center_horizontal">
 
-    <ImageView
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:src="@android:drawable/ic_menu_help"
-        android:layout_marginTop="50dp"
-        android:contentDescription="Support Icon" />
-
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Need Help?"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
+        android:text="HELP &amp; SUPPORT"
+        android:textColor="@color/neon_red"
+        android:textSize="22sp"
         android:textStyle="bold"
-        android:layout_marginTop="20dp"/>
+        android:layout_marginTop="40dp"/>
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="If your airtime is delayed or you have an issue, chat with our magic team directly on WhatsApp."
-        android:textColor="#CCFFFFFF"
+        android:text="Is your airtime delivery late? Did a reward not show up? Talk to us."
+        android:textColor="@color/gray_text"
         android:gravity="center"
-        android:layout_marginTop="10dp"/>
+        android:layout_marginTop="15dp"/>
 
     <Button
         android:id="@+id/btnWhatsApp"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="65dp"
         android:text="CHAT ON WHATSAPP"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="50dp"
         android:backgroundTint="#25D366" 
         android:textColor="#FFFFFF"
         android:textStyle="bold"/>
-        
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Support Number: +254789574046"
+        android:textColor="#44FFFFFF"
+        android:textSize="10sp"
+        android:layout_marginTop="20dp"/>
+
 </LinearLayout>
