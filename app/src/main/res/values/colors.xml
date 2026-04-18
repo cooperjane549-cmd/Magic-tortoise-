@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="tortoise_green_dark">#0B2B11</color>
-    <color name="tortoise_green_light">#2D5A27</color>
-    <color name="magic_gold">#FFD700</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
-    <color name="tortoise_green_dark">#0B2410</color>
-    <color name="tortoise_green_light">#1B4D24</color>
-    <color name="magic_gold">#FFD700</color>
-    <color name="neon_green">#A8E063</color>
-    <color name="premium_black">#081209</color>
-</resources>
+    
+    <color name="premium_black">#081209</color> <color name="tortoise_green_dark">#0B2410</color> <color name="tortoise_green_light">#1B4D24</color> <color name="magic_gold">#FFD700</color> <color name="neon_green">#A8E063</color> </resources>
