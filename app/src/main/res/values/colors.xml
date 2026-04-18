@@ -2,13 +2,13 @@
 <resources>
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
-    
     <color name="premium_black">#050000</color>
     <color name="dark_red_card">#1A0000</color>
     <color name="neon_red">#FF0000</color>
     <color name="crimson_glow">#8B0000</color>
     <color name="gray_text">#B3B3B3</color>
 
+    <color name="magic_gold">#FF0000</color>
     <color name="tortoise_green_dark">#1A0000</color>
     <color name="tortoise_green_light">#8B0000</color>
 </resources>
