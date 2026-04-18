@@ -9,8 +9,6 @@ import androidx.fragment.app.Fragment
 import androidx.browser.customtabs.CustomTabsIntent
 import android.net.Uri
 import com.google.android.gms.ads.*
-import com.google.android.gms.ads.nativead.NativeAd
-import com.google.android.gms.ads.nativead.NativeAdView
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.firebase.auth.FirebaseAuth
@@ -19,12 +17,12 @@ import com.google.firebase.database.*
 class DashboardFragment : Fragment() {
 
     private var rewardedAd: RewardedAd? = null
+    private var isAdLoading = false
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
     
-    // YOUR IDs
+    // Using your Ad IDs
     private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
-    private val NATIVE_ID = "ca-app-pub-3940256099942544/2247696110" 
 
     private var balance = 0.0
     private var adCycle = 0
@@ -32,80 +30,70 @@ class DashboardFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val root = inflater.inflate(R.layout.fragment_dashboard, container, false)
         
+        // Match IDs exactly to your XML
         val tvBalance = root.findViewById<TextView>(R.id.tvBalance)
-        val tvProgress = root.findViewById<TextView>(R.id.tvAdProgress)
-        val progressBar = root.findViewById<ProgressBar>(R.id.adProgressBar)
-        val btnWatch = root.findViewById<Button>(R.id.btnWatchAd)
-        val cardOffers = root.findViewById<View>(R.id.cardOfferWalls)
+        val tvAdProgress = root.findViewById<TextView>(R.id.tvAdProgress)
+        val adProgressBar = root.findViewById<ProgressBar>(R.id.adProgressBar)
+        val btnWatchAd = root.findViewById<Button>(R.id.btnWatchAd)
+        val cardOfferWalls = root.findViewById<View>(R.id.cardOfferWalls)
 
         val uid = auth.currentUser?.uid ?: return root
 
-        // FIREBASE SYNC
+        // Firebase Sync
         db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 balance = snapshot.child("balance").getValue(Double::class.java) ?: 0.0
                 adCycle = snapshot.child("adCycle").getValue(Int::class.java) ?: 0
+                
+                // Update your UI
                 tvBalance.text = String.format("%.2f", balance)
-                tvProgress.text = "Daily Progress: $adCycle/35"
-                progressBar.progress = adCycle
+                tvAdProgress.text = "Progress: $adCycle/35"
+                adProgressBar.progress = adCycle
             }
             override fun onCancelled(p0: DatabaseError) {}
         })
 
         loadAd()
-        loadNativeAd(root)
 
-        btnWatch.setOnClickListener {
+        // WATCH AD BUTTON
+        btnWatchAd.setOnClickListener {
             if (rewardedAd != null) {
                 rewardedAd?.show(requireActivity()) { 
                     updateReward(uid) 
+                    Toast.makeText(requireContext(), "Reward added!", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                // BETTER NOTIFICATION: Tells user it's actually working/loading
-                Toast.makeText(requireContext(), "Magic is loading... please wait 5 seconds", Toast.LENGTH_SHORT).show()
-                loadAd() // Try to reload if it was null
+                Toast.makeText(requireContext(), "Fetching magic ad... please try again in 5s", Toast.LENGTH_SHORT).show()
+                loadAd()
             }
         }
 
-        cardOffers?.setOnClickListener {
+        // OFFER WALL BUTTON
+        cardOfferWalls.setOnClickListener {
+            Toast.makeText(requireContext(), "Opening Premium Offers...", Toast.LENGTH_SHORT).show()
+            val url = "https://your-offerwall-link.com/?uid=$uid"
             val intent = CustomTabsIntent.Builder().build()
-            intent.launchUrl(requireContext(), Uri.parse("https://your-offerwall-link.com/?uid=$uid"))
+            intent.launchUrl(requireContext(), Uri.parse(url))
         }
 
         return root
     }
 
     private fun loadAd() {
+        if (isAdLoading) return
+        isAdLoading = true
+
         val adRequest = AdRequest.Builder().build()
         RewardedAd.load(requireContext(), AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
-            override fun onAdLoaded(ad: RewardedAd) { 
-                rewardedAd = ad 
+            override fun onAdLoaded(ad: RewardedAd) {
+                rewardedAd = ad
+                isAdLoading = false
             }
-            override fun onAdFailedToLoad(e: LoadAdError) { 
+            override fun onAdFailedToLoad(e: LoadAdError) {
                 rewardedAd = null
-                // LOGGING THE ERROR: This will tell you in Logcat WHY it failed
-                android.util.Log.e("ADMOB_ERROR", e.message)
+                isAdLoading = false
             }
         })
-    }
-
-    private fun loadNativeAd(root: View) {
-        val adLoader = AdLoader.Builder(requireContext(), NATIVE_ID)
-            .forNativeAd { nativeAd ->
-                val adView = root.findViewById<NativeAdView>(R.id.native_ad_view)
-                if (adView != null) {
-                    adView.visibility = View.VISIBLE
-                    adView.headlineView = adView.findViewById(R.id.ad_headline)
-                    adView.bodyView = adView.findViewById(R.id.ad_body)
-                    adView.callToActionView = adView.findViewById(R.id.ad_call_to_action)
-
-                    (adView.headlineView as? TextView)?.text = nativeAd.headline
-                    (adView.bodyView as? TextView)?.text = nativeAd.body
-                    (adView.callToActionView as? Button)?.text = nativeAd.callToAction
-                    adView.setNativeAd(nativeAd)
-                }
-            }.build()
-        adLoader.loadAd(AdRequest.Builder().build())
     }
 
     private fun updateReward(uid: String) {
@@ -113,12 +101,11 @@ class DashboardFragment : Fragment() {
         val rewardAmount = if (nextCycle <= 15) 0.067 else 0.05
         
         val updates = HashMap<String, Any>()
-        updates["balance"] = (balance + rewardAmount)
+        updates["balance"] = balance + rewardAmount
         updates["adCycle"] = nextCycle
         
         db.child("users").child(uid).updateChildren(updates).addOnSuccessListener {
-            Toast.makeText(requireContext(), "Shells Collected!", Toast.LENGTH_SHORT).show()
-            rewardedAd = null // Reset so we load a fresh one
+            rewardedAd = null
             loadAd() 
         }
     }
