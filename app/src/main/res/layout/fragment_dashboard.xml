@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#081209">
+    android:background="@color/premium_black">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,110 +12,84 @@
         android:padding="20dp">
 
         <TextView
-            android:id="@+id/tvTestimonial"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Recent Payout: User +254...046 redeemed KES 50.00"
-            android:textColor="#A8E063"
-            android:textSize="12sp"
-            android:background="#1AFFFFFF"
-            android:padding="8dp"
-            android:gravity="center"
-            android:layout_marginBottom="15dp"/>
+            android:text="MAGIC TORTOISE"
+            android:textColor="@color/neon_red"
+            android:textSize="22sp"
+            android:textStyle="bold" />
 
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
-            android:layout_height="200dp"
-            app:cardCornerRadius="24dp"
-            app:cardBackgroundColor="@color/tortoise_green_dark">
+            android:layout_height="180dp"
+            android:layout_marginTop="20dp"
+            app:cardCornerRadius="20dp"
+            app:cardBackgroundColor="@color/dark_red_card">
             
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="25dp">
-                
+                android:padding="20dp">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Total Shell Balance"
-                    android:textColor="#CCFFFFFF"
-                    android:textSize="14sp" />
-
+                    android:text="Available Shells"
+                    android:textColor="@color/gray_text"/>
                 <TextView
                     android:id="@+id/tvBalance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="KES 0.00"
                     android:textColor="#FFFFFF"
-                    android:textSize="36sp"
+                    android:textSize="32sp"
                     android:textStyle="bold"
                     android:layout_centerInParent="true"/>
-
-                <TextView
-                    android:id="@+id/tvUserPhone"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="+254789574046"
-                    android:textColor="#66FFFFFF"
-                    android:layout_alignParentBottom="true"
-                    android:layout_alignParentEnd="true"/>
             </RelativeLayout>
         </androidx.cardview.widget.CardView>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Ad Cycle Progress (Goal: KES 2.00)"
-            android:textColor="@color/magic_gold"
-            android:layout_marginTop="25dp"
-            android:textStyle="bold"/>
-
-        <ProgressBar
-            android:id="@+id/adProgressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="12dp"
-            android:layout_marginTop="10dp"
-            android:max="35"
-            android:progressDrawable="@drawable/custom_progress_bar" />
 
         <TextView
             android:id="@+id/tvAdCount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="0/35 Ads Watched"
-            android:textColor="#FFFFFF"
-            android:layout_gravity="end"
-            android:layout_marginTop="5dp"/>
+            android:text="Progress: 0/35 Ads"
+            android:textColor="@color/neon_red"
+            android:layout_marginTop="25dp"/>
+
+        <ProgressBar
+            android:id="@+id/adProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="10dp"
+            android:layout_marginTop="10dp"
+            android:max="35"
+            android:progressDrawable="@drawable/custom_progress_bar" />
 
         <Button
             android:id="@+id/btnWatchAd"
             android:layout_width="match_parent"
-            android:layout_height="65dp"
+            android:layout_height="60dp"
             android:layout_marginTop="20dp"
-            android:text="WATCH MAGIC AD"
-            android:backgroundTint="@color/tortoise_green_light"
+            android:text="WATCH AD &amp; EARN"
+            android:backgroundTint="@color/crimson_glow"
             android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            app:cornerRadius="12dp"/>
+            android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Top Magic Earners"
-            android:textColor="@color/magic_gold"
-            android:layout_marginTop="30dp"
-            android:textStyle="bold"/>
-
-        <LinearLayout
-            android:id="@+id/leaderboardContainer"
+        <com.google.android.gms.ads.nativead.NativeAdView
+            android:id="@+id/native_ad_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="10dp"
-            android:background="#11FFFFFF"
+            android:layout_marginTop="20dp"
+            android:background="@color/dark_red_card"
             android:padding="10dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView android:id="@+id/ad_headline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textStyle="bold"/>
+                <TextView android:id="@+id/ad_body" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/gray_text" android:textSize="12sp"/>
+                <Button android:id="@+id/ad_call_to_action" android:layout_width="match_parent" android:layout_height="wrap_content" android:backgroundTint="@color/neon_red" />
             </LinearLayout>
+        </com.google.android.gms.ads.nativead.NativeAdView>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
