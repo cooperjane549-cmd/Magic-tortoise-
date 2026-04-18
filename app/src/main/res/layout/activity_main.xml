@@ -9,7 +9,7 @@
         android:id="@+id/backgroundVideo"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.15" />
+        android:alpha="0.1" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -20,31 +20,22 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp"
-            android:gravity="center_horizontal">
+            android:padding="20dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="MAGIC TORTOISE"
                 android:textColor="#FFD700"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold"
-                android:layout_marginTop="10dp"/>
-
-            <TextView
-                android:id="@+id/tvUserPhone"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Linked: Loading..."
-                android:textColor="#A8E063"
-                android:textSize="12sp" />
+                android:layout_gravity="center" />
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
-                app:cardCornerRadius="16dp"
+                android:layout_marginTop="20dp"
+                app:cardCornerRadius="20dp"
                 app:cardBackgroundColor="#1B4D24">
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -52,103 +43,86 @@
                     android:orientation="vertical"
                     android:padding="20dp"
                     android:gravity="center">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="SHELL BALANCE"
-                        android:textColor="#A8E063"
-                        android:textSize="12sp" />
+                    
                     <TextView
                         android:id="@+id/tvBalance"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="KES 0.00"
                         android:textColor="#FFFFFF"
-                        android:textSize="40sp"
+                        android:textSize="42sp"
                         android:textStyle="bold" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
 
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
-                app:cardCornerRadius="12dp"
-                app:cardBackgroundColor="#123018">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="15dp">
                     <TextView
+                        android:id="@+id/tvAdProgress"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="How it Works:"
-                        android:textColor="#FFD700"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="• Watch ads to grow your Shell Balance.\n• Reach KES 10.00 to unlock instant airtime.\n• Use the 'Magic' to stay connected for free!"
-                        android:textColor="#CCFFFFFF"
-                        android:textSize="13sp"
-                        android:layout_marginTop="5dp" />
+                        android:text="Ads Watched: 0/15"
+                        android:textColor="#A8E063"
+                        android:layout_marginTop="10dp" />
+
+                    <ProgressBar
+                        android:id="@+id/adProgressBar"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:layout_marginTop="10dp"
+                        android:max="15"
+                        android:progressTint="#FFD700" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
-
-            <ProgressBar
-                android:id="@+id/adProgressBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="12dp"
-                android:layout_marginTop="20dp"
-                android:max="15"
-                android:progressTint="#FFD700" />
-
-            <TextView
-                android:id="@+id/tvStageStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Ready for your first ad?"
-                android:textColor="#FFFFFF"
-                android:layout_marginTop="5dp" />
 
             <Button
                 android:id="@+id/btnWatchAd"
                 android:layout_width="match_parent"
                 android:layout_height="60dp"
-                android:layout_marginTop="15dp"
+                android:layout_marginTop="20dp"
                 android:text="WATCH MAGIC AD"
-                android:backgroundTint="#1B4D24" />
+                android:backgroundTint="#2D5A27" />
+
+            <FrameLayout
+                android:id="@+id/nativeAdPlaceholder"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:layout_marginTop="20dp"
+                android:background="#1AFFFFFF">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sponsor Space"
+                    android:layout_gravity="center"
+                    android:textColor="#44FFFFFF"/>
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AIRTIME STORE"
+                android:textColor="#FFD700"
+                android:layout_marginTop="30dp"
+                android:textStyle="bold" />
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="30dp"
+                android:layout_marginTop="10dp"
                 app:cardCornerRadius="12dp">
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="20dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="REDEEM AIRTIME"
-                        android:textColor="#0B2410"
-                        android:textStyle="bold" />
+                    android:padding="15dp">
                     <EditText
                         android:id="@+id/etAmount"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Amount (KES)"
+                        android:hint="Enter Amount (Min KES 3)"
                         android:inputType="number" />
                     <Button
                         android:id="@+id/btnBuy"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Process Withdrawal"
+                        android:text="REDEEM AIRTIME"
                         android:backgroundTint="#0B2410" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
