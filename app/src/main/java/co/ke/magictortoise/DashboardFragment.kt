@@ -23,7 +23,7 @@ class DashboardFragment : Fragment() {
     private var adCycle = 0
 
     // AD UNIT IDs (Currently using Test IDs so you can see them immediately)
-    private val REWARDED_ID = "ca-app-pub-3940256099942544/5224354917"
+    private val REWARDED_ID = "ca-app-pub-2344867686796379/1476405830"
     private val NATIVE_ID = "ca-app-pub-3940256099942544/2247696110"
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
