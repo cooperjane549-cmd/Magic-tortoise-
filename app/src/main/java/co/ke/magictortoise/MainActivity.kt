@@ -1,7 +1,6 @@
 package co.ke.magictortoise
 
 import android.os.Bundle
-import android.view.ContextThemeWrapper
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.gms.ads.MobileAds
@@ -10,23 +9,20 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 1. Force the Material Theme before anything else loads
         setTheme(R.style.Theme_MagicTortoise) 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 2. Initialize Ads engine
-        try {
-            MobileAds.initialize(this) { }
-        } catch (e: Exception) {
-            // Prevent crash if AdMob is acting up
-        }
+        // Initialize Ads
+        MobileAds.initialize(this) {}
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
 
-        // 3. Set default screen
+        // Set default screen
         if (savedInstanceState == null) {
-            loadFragment(DashboardFragment())
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.nav_host_fragment, DashboardFragment())
+                .commit()
         }
 
         bottomNav.setOnItemSelectedListener { item ->
@@ -43,12 +39,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadFragment(fragment: Fragment) {
-        // We use a safe check to ensure the ID "nav_host_fragment" exists
-        val containerId = R.id.nav_host_fragment
-        
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-            .replace(containerId, fragment)
-            .commitAllowingStateLoss() // Safer for low-RAM devices
+            .replace(R.id.nav_host_fragment, fragment)
+            .commit()
     }
 }
