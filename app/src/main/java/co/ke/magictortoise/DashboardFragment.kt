@@ -19,13 +19,12 @@ class DashboardFragment : Fragment() {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
     
-    // Using your Ad Unit ID
+    // This is your Ad Unit ID (The one with the /)
     private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val root = inflater.inflate(R.layout.fragment_dashboard, container, false)
         
-        // Connect to your XML IDs
         val tvBalance = root.findViewById<TextView>(R.id.tvBalance)
         val tvAdProgress = root.findViewById<TextView>(R.id.tvAdProgress)
         val adProgressBar = root.findViewById<ProgressBar>(R.id.adProgressBar)
@@ -34,9 +33,10 @@ class DashboardFragment : Fragment() {
 
         val uid = auth.currentUser?.uid ?: return root
 
-        // Firebase: Listen for Balance & Progress
+        // Firebase Sync: Updates your shells and progress bar automatically
         db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                if (!isAdded) return // Safety check
                 val balance = snapshot.child("balance").getValue(Double::class.java) ?: 0.0
                 val adCycle = snapshot.child("adCycle").getValue(Int::class.java) ?: 0
                 
@@ -47,44 +47,57 @@ class DashboardFragment : Fragment() {
             override fun onCancelled(p0: DatabaseError) {}
         })
 
-        // Pre-load the first ad
+        // Start loading the ad as soon as the screen opens
         loadAd()
 
-        // Button: Watch Ad
+        // THE WATCH AD BUTTON
         btnWatchAd?.setOnClickListener {
             if (rewardedAd != null) {
-                rewardedAd?.show(requireActivity()) { rewardItem ->
-                    updateRewardInFirebase(uid)
-                    Toast.makeText(context, "Magic Reward Collected!", Toast.LENGTH_SHORT).show()
+                // We use activity? to ensure the "Mansion" (MainActivity) is hosting the ad
+                activity?.let { myActivity ->
+                    rewardedAd?.show(myActivity) { rewardItem ->
+                        updateRewardInFirebase(uid)
+                    }
                 }
             } else {
-                Toast.makeText(context, "Magic is fetching an ad... please wait.", Toast.LENGTH_SHORT).show()
+                // If it's glittery but nothing happens, this Toast will now tell you why
+                Toast.makeText(context, "Magic is still fetching an ad... please try again in 5 seconds.", Toast.LENGTH_SHORT).show()
                 if (!isAdLoading) loadAd()
             }
         }
 
-        // Card: Offer Walls
         cardOfferWalls?.setOnClickListener {
             Toast.makeText(context, "Premium Offer Walls Loading...", Toast.LENGTH_SHORT).show()
-            // Add your Offerwall link logic here when ready
         }
 
         return root
     }
 
     private fun loadAd() {
-        if (isAdLoading || context == null) return
+        // Safe check: Don't load if already loading or if screen is closed
+        val currentContext = context ?: return
+        if (isAdLoading) return
+        
         isAdLoading = true
 
         val adRequest = AdRequest.Builder().build()
-        RewardedAd.load(requireContext(), AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
+        RewardedAd.load(currentContext, AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
             override fun onAdLoaded(ad: RewardedAd) {
                 rewardedAd = ad
                 isAdLoading = false
+                // Success Notification
+                activity?.runOnUiThread {
+                    Toast.makeText(context, "Ad Ready to Play!", Toast.LENGTH_SHORT).show()
+                }
             }
+
             override fun onAdFailedToLoad(e: LoadAdError) {
                 rewardedAd = null
                 isAdLoading = false
+                // DIAGNOSTIC: This tells you the REAL reason for the "glittering"
+                activity?.runOnUiThread {
+                    android.util.Log.e("ADS_ERROR", e.message)
+                }
             }
         })
     }
@@ -92,9 +105,10 @@ class DashboardFragment : Fragment() {
     private fun updateRewardInFirebase(uid: String) {
         db.child("users").child(uid).runTransaction(object : Transaction.Handler {
             override fun doTransaction(mutableData: MutableData): Transaction.Result {
-                var balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
-                var adCycle = mutableData.child("adCycle").getValue(Int::class.java) ?: 0
+                val balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
+                val adCycle = mutableData.child("adCycle").getValue(Int::class.java) ?: 0
 
+                // Logic: 0.067 for first 15 ads, 0.05 after that
                 val nextCycle = if (adCycle >= 35) 1 else adCycle + 1
                 val rewardAmount = if (nextCycle <= 15) 0.067 else 0.05
 
@@ -103,9 +117,13 @@ class DashboardFragment : Fragment() {
                 
                 return Transaction.success(mutableData)
             }
-            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) {
-                rewardedAd = null
-                loadAd() // Load next ad immediately
+
+            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
+                if (committed) {
+                    Toast.makeText(context, "Magic Shells Collected!", Toast.LENGTH_SHORT).show()
+                    rewardedAd = null
+                    loadAd() // Prepare the next ad
+                }
             }
         })
     }
