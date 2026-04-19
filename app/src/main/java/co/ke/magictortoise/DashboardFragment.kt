@@ -35,11 +35,10 @@ class DashboardFragment : Fragment() {
         val adProgressBar = view.findViewById<ProgressBar>(R.id.adProgressBar)
         val btnWatchAd = view.findViewById<Button>(R.id.btnWatchAd)
         val cardOfferWalls = view.findViewById<View>(R.id.cardOfferWalls)
+        val ivLocalBanner = view.findViewById<ImageView>(R.id.ivLocalBanner)
+        val cardLocalAd = view.findViewById<View>(R.id.cardLocalAd)
 
-        // 2. IMMEDIATE TEST: If you see this, the code is running!
-        Toast.makeText(context, "Tortoise Logic Online", Toast.LENGTH_SHORT).show()
-
-        // 3. Sync Firebase (Only if user exists, but don't 'return' if they don't)
+        // 2. Sync Firebase Data
         val currentUser = auth.currentUser
         if (currentUser != null) {
             val uid = currentUser.uid
@@ -57,18 +56,22 @@ class DashboardFragment : Fragment() {
                     Log.e("FIREBASE_ERROR", p0.message)
                 }
             })
+            
+            // Pull the local client banner link from Firebase
+            loadLocalClientBanner(ivLocalBanner, cardLocalAd)
+            
         } else {
-            tvBalance?.text = "User not logged in"
+            tvBalance?.text = "Login to see Shells"
         }
 
-        // 4. Load the Ad
+        // 3. Load the Google Ad
         loadAd()
 
-        // 5. Watch Ad Button (No longer blocked by the top-level 'return')
+        // 4. Watch Ad Button Logic
         btnWatchAd?.setOnClickListener {
             val uid = auth.currentUser?.uid
             if (uid == null) {
-                Toast.makeText(context, "Error: No User ID found. Please log in again.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Please log in first", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -79,14 +82,25 @@ class DashboardFragment : Fragment() {
                     }
                 }
             } else {
-                Toast.makeText(context, "Magic is still fetching... please wait.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Ad is loading, try again in a moment...", Toast.LENGTH_SHORT).show()
                 if (!isAdLoading) loadAd()
             }
         }
 
-        // 6. Card: Offer Walls
+        // 5. Card: Offer Walls
         cardOfferWalls?.setOnClickListener {
-            Toast.makeText(context, "Offer Walls coming soon!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Offer Walls: Coming Soon!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun loadLocalClientBanner(imageView: ImageView?, card: View?) {
+        // Logic to pull your business partners' banners will go here
+        // For now, it stays as your logo until we set up the Firebase "banners" node
+        db.child("settings").child("localBannerUrl").get().addOnSuccessListener { snapshot ->
+            val url = snapshot.getValue(String::class.java)
+            if (url != null && isAdded) {
+                // Future: Use Glide or Picasso to load 'url' into 'imageView'
+            }
         }
     }
 
@@ -100,12 +114,11 @@ class DashboardFragment : Fragment() {
             override fun onAdLoaded(ad: RewardedAd) {
                 rewardedAd = ad
                 isAdLoading = false
-                Log.d("ADS", "Ad loaded successfully")
             }
             override fun onAdFailedToLoad(e: LoadAdError) {
                 rewardedAd = null
                 isAdLoading = false
-                Log.e("ADS", "Ad failed to load: ${e.message}")
+                Log.e("ADS", "Failed: ${e.message}")
             }
         })
     }
@@ -116,7 +129,10 @@ class DashboardFragment : Fragment() {
                 val balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
                 val adCycle = mutableData.child("adCycle").getValue(Int::class.java) ?: 0
 
+                // Increment cycle, reset to 1 after 35
                 val nextCycle = if (adCycle >= 35) 1 else adCycle + 1
+                
+                // Reward logic: 0.067 for first 15, 0.05 after
                 val rewardAmount = if (nextCycle <= 15) 0.067 else 0.05
 
                 mutableData.child("balance").value = balance + rewardAmount
@@ -126,7 +142,8 @@ class DashboardFragment : Fragment() {
             }
 
             override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                if (committed) {
+                if (committed && isAdded) {
+                    Toast.makeText(context, "Reward Added!", Toast.LENGTH_SHORT).show()
                     rewardedAd = null
                     loadAd()
                 }
