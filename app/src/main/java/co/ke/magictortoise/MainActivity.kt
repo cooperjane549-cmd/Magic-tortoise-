@@ -1,6 +1,7 @@
 package co.ke.magictortoise
 
 import android.os.Bundle
+import android.view.ContextThemeWrapper
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.gms.ads.MobileAds
@@ -9,25 +10,25 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 1. Force the Material Theme before anything else loads
+        setTheme(R.style.Theme_MagicTortoise) 
         super.onCreate(savedInstanceState)
-        // Links to your ConstraintLayout XML
         setContentView(R.layout.activity_main)
 
-        // 1. Initialize Ads Engine immediately
-        MobileAds.initialize(this) { initializationStatus ->
-            // Optional: You can log here to see if ads are ready
+        // 2. Initialize Ads engine
+        try {
+            MobileAds.initialize(this) { }
+        } catch (e: Exception) {
+            // Prevent crash if AdMob is acting up
         }
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
 
-        // 2. Set the default screen (Dashboard) only if it's the first launch
+        // 3. Set default screen
         if (savedInstanceState == null) {
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.nav_host_fragment, DashboardFragment())
-                .commit()
+            loadFragment(DashboardFragment())
         }
 
-        // 3. Setup Navigation
         bottomNav.setOnItemSelectedListener { item ->
             val fragment: Fragment = when (item.itemId) {
                 R.id.nav_home -> DashboardFragment()
@@ -36,19 +37,18 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_support -> SupportFragment()
                 else -> DashboardFragment()
             }
-            
-            // Call our safe replacement function
             loadFragment(fragment)
             true
         }
     }
 
     private fun loadFragment(fragment: Fragment) {
-        // Using the ID "nav_host_fragment" from your activity_main.xml
-        // Adding 'addToBackStack(null)' can help prevent crashes during quick taps
+        // We use a safe check to ensure the ID "nav_host_fragment" exists
+        val containerId = R.id.nav_host_fragment
+        
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-            .replace(R.id.nav_host_fragment, fragment)
-            .commit()
+            .replace(containerId, fragment)
+            .commitAllowingStateLoss() // Safer for low-RAM devices
     }
 }
