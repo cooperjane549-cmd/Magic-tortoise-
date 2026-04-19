@@ -6,4 +6,6 @@
     <string name="shell_balance">Shell Balance</string>
     <string name="daily_path">The Daily Path</string>
     <string name="withdrawal_min">Min Withdrawal: KES 3.00</string>
+
+    <string name="default_web_client_id">1041005280895-jecnqkeri6vvsnjcin9q90eaa9vfnpcn.apps.googleusercontent.com</string>
 </resources>
