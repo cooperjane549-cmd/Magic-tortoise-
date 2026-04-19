@@ -10,9 +10,11 @@
         android:label="Magic Tortoise"
         android:roundIcon="@drawable/wise_tortoise_logo"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MagicTortoise"> <meta-data
+        android:theme="@style/Theme.MagicTortoise"> 
+
+        <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-2344867686796379/1476405830"/> 
+            android:value="ca-app-pub-2344867686796379~1476405830"/> 
 
         <activity
             android:name=".MainActivity"
