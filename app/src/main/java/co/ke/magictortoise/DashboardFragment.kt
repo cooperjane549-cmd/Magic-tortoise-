@@ -22,47 +22,56 @@ class DashboardFragment : Fragment() {
     
     private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
 
-    // STAGE 1: Just inflate the layout
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_dashboard, container, false)
     }
 
-    // STAGE 2: Wire the logic (Everything goes here now)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // 1. Find views
         val tvBalance = view.findViewById<TextView>(R.id.tvBalance)
         val tvAdProgress = view.findViewById<TextView>(R.id.tvAdProgress)
         val adProgressBar = view.findViewById<ProgressBar>(R.id.adProgressBar)
         val btnWatchAd = view.findViewById<Button>(R.id.btnWatchAd)
         val cardOfferWalls = view.findViewById<View>(R.id.cardOfferWalls)
 
-        val uid = auth.currentUser?.uid ?: return
-
-        // DIAGNOSTIC TEST: If you don't see this, the Fragment isn't loading!
+        // 2. IMMEDIATE TEST: If you see this, the code is running!
         Toast.makeText(context, "Tortoise Logic Online", Toast.LENGTH_SHORT).show()
 
-        // Firebase Sync: Always listening for Shell updates
-        db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (!isAdded) return
-                val balance = snapshot.child("balance").getValue(Double::class.java) ?: 0.0
-                val adCycle = snapshot.child("adCycle").getValue(Int::class.java) ?: 0
-                
-                tvBalance?.text = String.format("%.2f", balance)
-                tvAdProgress?.text = "Progress: $adCycle/35"
-                adProgressBar?.progress = adCycle
-            }
-            override fun onCancelled(p0: DatabaseError) {
-                Log.e("FIREBASE_ERROR", p0.message)
-            }
-        })
+        // 3. Sync Firebase (Only if user exists, but don't 'return' if they don't)
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            val uid = currentUser.uid
+            db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (!isAdded) return
+                    val balance = snapshot.child("balance").getValue(Double::class.java) ?: 0.0
+                    val adCycle = snapshot.child("adCycle").getValue(Int::class.java) ?: 0
+                    
+                    tvBalance?.text = String.format("%.2f", balance)
+                    tvAdProgress?.text = "Progress: $adCycle/35"
+                    adProgressBar?.progress = adCycle
+                }
+                override fun onCancelled(p0: DatabaseError) {
+                    Log.e("FIREBASE_ERROR", p0.message)
+                }
+            })
+        } else {
+            tvBalance?.text = "User not logged in"
+        }
 
-        // Pre-load the ad
+        // 4. Load the Ad
         loadAd()
 
-        // Button: Watch Ad
+        // 5. Watch Ad Button (No longer blocked by the top-level 'return')
         btnWatchAd?.setOnClickListener {
+            val uid = auth.currentUser?.uid
+            if (uid == null) {
+                Toast.makeText(context, "Error: No User ID found. Please log in again.", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+
             if (rewardedAd != null) {
                 activity?.let { myActivity ->
                     rewardedAd?.show(myActivity) { rewardItem ->
@@ -75,7 +84,7 @@ class DashboardFragment : Fragment() {
             }
         }
 
-        // Card: Offer Walls
+        // 6. Card: Offer Walls
         cardOfferWalls?.setOnClickListener {
             Toast.makeText(context, "Offer Walls coming soon!", Toast.LENGTH_SHORT).show()
         }
