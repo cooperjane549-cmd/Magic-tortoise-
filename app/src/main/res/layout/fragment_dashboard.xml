@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     android:background="@color/cyber_black">
 
     <LinearLayout
@@ -25,7 +26,7 @@
             android:layout_height="160dp"
             android:layout_marginTop="20dp"
             app:cardCornerRadius="28dp"
-            app:cardElevation="0dp"
+            app:cardElevation="8dp"
             app:cardBackgroundColor="@color/glass_white">
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -49,16 +50,15 @@
             </RelativeLayout>
         </androidx.cardview.widget.CardView>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnWatchAd"
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:layout_marginTop="20dp"
             android:text="WATCH AD TO EARN"
+            android:textColor="@color/white"
             android:backgroundTint="@color/primary_red"
             android:textStyle="bold"
-            android:clickable="true"
-            android:focusable="true"
             app:cornerRadius="16dp" />
 
         <androidx.cardview.widget.CardView
@@ -66,11 +66,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="15dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
             app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="@color/glass_white">
+            app:cardBackgroundColor="@color/glass_white"
+            android:foreground="?attr/selectableItemBackground">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -92,20 +90,6 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <com.google.android.gms.ads.nativead.NativeAdView
-            android:id="@+id/native_ad_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="@drawable/glass_border_red"
-            android:visibility="gone">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="10dp">
-                <TextView android:id="@+id/ad_headline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/white" android:textStyle="bold" android:textSize="14sp"/>
-                <TextView android:id="@+id/ad_body" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text_gray" android:textSize="11sp"/>
-                <Button android:id="@+id/ad_call_to_action" android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="5dp" android:textSize="12sp" android:backgroundTint="@color/secondary_red"/>
-            </LinearLayout>
-        </com.google.android.gms.ads.nativead.NativeAdView>
-
         <TextView
             android:id="@+id/tvAdProgress"
             android:layout_width="wrap_content"
@@ -114,14 +98,15 @@
             android:textColor="@color/primary_red"
             android:layout_marginTop="20dp"
             android:textStyle="bold"
-            android:textSize="12sp"/>
+            android:textSize="14sp"/>
         
         <ProgressBar
             android:id="@+id/adProgressBar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="8dp"
-            android:layout_marginTop="5dp"
+            android:layout_height="12dp"
+            android:layout_marginTop="8dp"
+            android:progressDrawable="@android:drawable/progress_horizontal"
             android:max="35" />
 
     </LinearLayout>
