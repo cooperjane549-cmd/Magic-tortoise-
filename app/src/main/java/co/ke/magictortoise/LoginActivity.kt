@@ -5,22 +5,19 @@ import android.os.Bundle
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.FirebaseException
-import com.google.firebase.auth.*
-import java.util.concurrent.TimeUnit
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
-    private var verificationId: String? = null
-    
-    // UI Elements
-    private lateinit var etPhone: EditText
-    private lateinit var etOTP: EditText
-    private lateinit var btnSend: Button
-    private lateinit var btnVerify: Button
-    private lateinit var otpContainer: LinearLayout
+    private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var progressBar: ProgressBar
+    private val RC_SIGN_IN = 9001 // Request code for sign-in
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,77 +25,67 @@ class LoginActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
 
-        // If user is already logged in, skip to MainActivity
+        // 1. If user is already logged in, skip to MainActivity
         if (auth.currentUser != null) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
+            return
         }
 
-        etPhone = findViewById(R.id.etPhoneNumber)
-        etOTP = findViewById(R.id.etOTP)
-        btnSend = findViewById(R.id.btnSendCode)
-        btnVerify = findViewById(R.id.btnVerifyCode)
-        otpContainer = findViewById(R.id.otpContainer)
         progressBar = findViewById(R.id.loginProgress)
+        val btnGoogleSignIn = findViewById<Button>(R.id.btnSendCode) // We'll reuse your button ID for now
+        val tvSubtitle = findViewById<TextView>(R.id.loginSubtitle)
 
-        btnSend.setOnClickListener {
-            val phone = etPhone.text.toString().trim()
-            if (phone.isNotEmpty() && phone.length > 9) {
-                sendVerificationCode(phone)
-            } else {
-                Toast.makeText(this, "Enter valid number (e.g. +254...)", Toast.LENGTH_SHORT).show()
+        // 2. Add the excitement!
+        tvSubtitle.text = "Sign in to earn shells & redeem for FREE Airtime!"
+        btnGoogleSignIn.text = "CONTINUE WITH GOOGLE"
+
+        // 3. Configure Google Sign In
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id)) // Requires google-services.json
+            .requestEmail()
+            .build()
+
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        btnGoogleSignIn.setOnClickListener {
+            signIn()
+        }
+    }
+
+    private fun signIn() {
+        progressBar.visibility = View.VISIBLE
+        val signInIntent = googleSignInClient.signInIntent
+        startActivityForResult(signInIntent, RC_SIGN_IN)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == RC_SIGN_IN) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            try {
+                val account = task.getResult(ApiException::class.java)!!
+                firebaseAuthWithGoogle(account.idToken!!)
+            } catch (e: ApiException) {
+                progressBar.visibility = View.GONE
+                Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
-
-        btnVerify.setOnClickListener {
-            val code = etOTP.text.toString().trim()
-            if (code.length == 6 && verificationId != null) {
-                verifyCode(code)
-            }
-        }
     }
 
-    private fun sendVerificationCode(phone: String) {
-        progressBar.visibility = View.VISIBLE
-        val options = PhoneAuthOptions.newBuilder(auth)
-            .setPhoneNumber(phone)
-            .setTimeout(60L, TimeUnit.SECONDS)
-            .setActivity(this)
-            .setCallbacks(object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-                override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-                    signInWithCredential(credential)
-                }
-
-                override fun onVerificationFailed(e: FirebaseException) {
-                    progressBar.visibility = View.GONE
-                    Toast.makeText(this@LoginActivity, e.message, Toast.LENGTH_LONG).show()
-                }
-
-                override fun onCodeSent(vId: String, token: PhoneAuthProvider.ForceResendingToken) {
-                    progressBar.visibility = View.GONE
-                    verificationId = vId
-                    otpContainer.visibility = View.VISIBLE
-                    btnSend.visibility = View.GONE
-                    Toast.makeText(this@LoginActivity, "Code Sent", Toast.LENGTH_SHORT).show()
-                }
-            }).build()
-        PhoneAuthProvider.verifyPhoneNumber(options)
-    }
-
-    private fun verifyCode(code: String) {
-        val credential = PhoneAuthProvider.getCredential(verificationId!!, code)
-        signInWithCredential(credential)
-    }
-
-    private fun signInWithCredential(credential: PhoneAuthCredential) {
-        progressBar.visibility = View.VISIBLE
-        auth.signInWithCredential(credential).addOnCompleteListener { task ->
+    private fun firebaseAuthWithGoogle(idToken: String) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential).addOnCompleteListener(this) { task ->
             if (task.isSuccessful) {
+                // Sign in success
+                Toast.makeText(this, "Welcome to Magic Tortoise! 🐢", Toast.LENGTH_SHORT).show()
                 startActivity(Intent(this, MainActivity::class.java))
                 finish()
             } else {
+                // If sign in fails
                 progressBar.visibility = View.GONE
-                Toast.makeText(this, "Login Failed", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Authentication Failed.", Toast.LENGTH_SHORT).show()
             }
         }
     }
