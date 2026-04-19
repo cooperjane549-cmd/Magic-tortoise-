@@ -1,4 +1,4 @@
-name: Android Build
+name: Android Build & Sign
 
 on:
   push:
@@ -20,14 +20,30 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    # STEP 1: Decode the Keystore from your GitHub Secrets
+    - name: Decode Keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/release-keystore.jks
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    # STEP 2: Build and Sign the APK
+    # We pass the secrets as Environment Variables so build.gradle can see them
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleRelease
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-    - name: Upload APK
+    # STEP 3: Generate the SHA-1 (The "ID Card" for Firebase)
+    - name: Get SHA-1 Fingerprint
+      run: ./gradlew signingReport
+      
+    - name: Upload Signed APK
       uses: actions/upload-artifact@v4
       with:
-        name: magic-tortoise-debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: magic-tortoise-signed-apk
+        path: app/build/outputs/apk/release/app-release.apk
+        
