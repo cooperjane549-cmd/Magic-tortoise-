@@ -57,6 +57,8 @@
             android:text="WATCH AD TO EARN"
             android:backgroundTint="@color/primary_red"
             android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
             app:cornerRadius="16dp" />
 
         <androidx.cardview.widget.CardView
@@ -64,6 +66,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="15dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
             app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/glass_white">
             <LinearLayout
