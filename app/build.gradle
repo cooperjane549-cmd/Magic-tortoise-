@@ -5,7 +5,6 @@ plugins {
 }
 
 android {
-    // FORCE THIS NAMESPACE
     namespace 'co.ke.magictortoise'
     compileSdk 34
 
@@ -17,8 +16,31 @@ android {
         versionName "1.0"
     }
 
+    // STEP 1: The "Signing Bridge" - This connects to your GitHub Secrets
+    signingConfigs {
+        release {
+            // These variables will be filled by the GitHub Action using your Secrets
+            storeFile file("release-keystore.jks")
+            storePassword System.getenv("KEYSTORE_PASSWORD")
+            keyAlias System.getenv("KEY_ALIAS")
+            keyPassword System.getenv("KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Apply the signing config here
+            signingConfig signingConfigs.release
+        }
+        debug {
+            // Use the same signing for debug so your Firebase SHA-1 always matches
+            signingConfig signingConfigs.release
+        }
+    }
+
     buildFeatures {
-        // Keeping this false to ensure no conflicts with manual R calls
         viewBinding false
     }
 
@@ -32,13 +54,23 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // NAVIGATION (Required for your BottomNav to switch fragments properly)
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.7'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.7.7'
+
+    // ADS
     implementation 'com.google.android.gms:play-services-ads:23.0.0'
+
+    // FIREBASE
     implementation platform('com.google.firebase:firebase-bom:33.0.0')
     implementation 'com.google.firebase:firebase-database-ktx'
     implementation 'com.google.firebase:firebase-auth-ktx'
+    
+    // PHONE AUTH (Specific dependency for SMS verification)
+    implementation 'com.google.firebase:firebase-auth:22.3.1'
 }
