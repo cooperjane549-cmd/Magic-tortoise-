@@ -29,7 +29,6 @@ jobs:
       run: chmod +x gradlew
 
     # STEP 2: Build and Sign the APK
-    # We pass the secrets as Environment Variables so build.gradle can see them
     - name: Build with Gradle
       run: ./gradlew assembleRelease
       env:
@@ -37,9 +36,13 @@ jobs:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-    # STEP 3: Generate the SHA-1 (The "ID Card" for Firebase)
+    # STEP 3: Generate the SHA-1 (FIXED: Added env here so it's not null)
     - name: Get SHA-1 Fingerprint
       run: ./gradlew signingReport
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       
     - name: Upload Signed APK
       uses: actions/upload-artifact@v4
