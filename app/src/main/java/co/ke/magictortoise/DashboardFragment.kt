@@ -12,6 +12,8 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.unity3d.ads.IUnityAdsShowListener
+import com.unity3d.ads.UnityAds
 
 class DashboardFragment : Fragment() {
 
@@ -21,6 +23,7 @@ class DashboardFragment : Fragment() {
     private val db = FirebaseDatabase.getInstance().reference
     
     private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
+    private val UNITY_REWARDED_ID = "Rewarded_Android" // Ensure this matches your Unity Dashboard
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_dashboard, container, false)
@@ -29,7 +32,6 @@ class DashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. Find views
         val tvBalance = view.findViewById<TextView>(R.id.tvBalance)
         val tvAdProgress = view.findViewById<TextView>(R.id.tvAdProgress)
         val adProgressBar = view.findViewById<ProgressBar>(R.id.adProgressBar)
@@ -38,7 +40,6 @@ class DashboardFragment : Fragment() {
         val ivLocalBanner = view.findViewById<ImageView>(R.id.ivLocalBanner)
         val cardLocalAd = view.findViewById<View>(R.id.cardLocalAd)
 
-        // 2. Sync Firebase Data
         val currentUser = auth.currentUser
         if (currentUser != null) {
             val uid = currentUser.uid
@@ -52,22 +53,13 @@ class DashboardFragment : Fragment() {
                     tvAdProgress?.text = "Progress: $adCycle/35"
                     adProgressBar?.progress = adCycle
                 }
-                override fun onCancelled(p0: DatabaseError) {
-                    Log.e("FIREBASE_ERROR", p0.message)
-                }
+                override fun onCancelled(p0: DatabaseError) {}
             })
-            
-            // Pull the local client banner link from Firebase
             loadLocalClientBanner(ivLocalBanner, cardLocalAd)
-            
-        } else {
-            tvBalance?.text = "Login to see Shells"
         }
 
-        // 3. Load the Google Ad
-        loadAd()
+        loadAd() // Pre-load AdMob
 
-        // 4. Watch Ad Button Logic
         btnWatchAd?.setOnClickListener {
             val uid = auth.currentUser?.uid
             if (uid == null) {
@@ -75,33 +67,33 @@ class DashboardFragment : Fragment() {
                 return@setOnClickListener
             }
 
+            // --- WATERFALL LOGIC ---
             if (rewardedAd != null) {
-                activity?.let { myActivity ->
-                    rewardedAd?.show(myActivity) { rewardItem ->
-                        updateRewardInFirebase(uid)
-                    }
+                // Try AdMob First
+                rewardedAd?.show(requireActivity()) { 
+                    updateRewardInFirebase(uid) 
                 }
             } else {
-                Toast.makeText(context, "Ad is loading, try again in a moment...", Toast.LENGTH_SHORT).show()
-                if (!isAdLoading) loadAd()
+                // If AdMob fails, try Unity Second
+                showUnityAd(uid)
             }
-        }
-
-        // 5. Card: Offer Walls
-        cardOfferWalls?.setOnClickListener {
-            Toast.makeText(context, "Offer Walls: Coming Soon!", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun loadLocalClientBanner(imageView: ImageView?, card: View?) {
-        // Logic to pull your business partners' banners will go here
-        // For now, it stays as your logo until we set up the Firebase "banners" node
-        db.child("settings").child("localBannerUrl").get().addOnSuccessListener { snapshot ->
-            val url = snapshot.getValue(String::class.java)
-            if (url != null && isAdded) {
-                // Future: Use Glide or Picasso to load 'url' into 'imageView'
+    private fun showUnityAd(uid: String) {
+        UnityAds.show(requireActivity(), UNITY_REWARDED_ID, object : IUnityAdsShowListener {
+            override fun onUnityAdsShowComplete(placementId: String, state: UnityAds.UnityAdsShowCompletionState) {
+                if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) {
+                    updateRewardInFirebase(uid)
+                }
             }
-        }
+            override fun onUnityAdsShowFailure(p0: String, p1: UnityAds.UnityAdsShowError, p2: String) {
+                Toast.makeText(context, "No ads available, try in 5 seconds", Toast.LENGTH_SHORT).show()
+                loadAd() // Try reloading AdMob
+            }
+            override fun onUnityAdsShowStart(p0: String) {}
+            override fun onUnityAdsShowClick(p0: String) {}
+        })
     }
 
     private fun loadAd() {
@@ -118,7 +110,6 @@ class DashboardFragment : Fragment() {
             override fun onAdFailedToLoad(e: LoadAdError) {
                 rewardedAd = null
                 isAdLoading = false
-                Log.e("ADS", "Failed: ${e.message}")
             }
         })
     }
@@ -129,10 +120,7 @@ class DashboardFragment : Fragment() {
                 val balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
                 val adCycle = mutableData.child("adCycle").getValue(Int::class.java) ?: 0
 
-                // Increment cycle, reset to 1 after 35
                 val nextCycle = if (adCycle >= 35) 1 else adCycle + 1
-                
-                // Reward logic: 0.067 for first 15, 0.05 after
                 val rewardAmount = if (nextCycle <= 15) 0.067 else 0.05
 
                 mutableData.child("balance").value = balance + rewardAmount
@@ -145,9 +133,16 @@ class DashboardFragment : Fragment() {
                 if (committed && isAdded) {
                     Toast.makeText(context, "Reward Added!", Toast.LENGTH_SHORT).show()
                     rewardedAd = null
-                    loadAd()
+                    loadAd() // Pre-load next AdMob ad
                 }
             }
         })
+    }
+
+    private fun loadLocalClientBanner(imageView: ImageView?, card: View?) {
+        db.child("settings").child("localBannerUrl").get().addOnSuccessListener { snapshot ->
+            val url = snapshot.getValue(String::class.java)
+            if (url != null && isAdded) { /* Future Glide logic */ }
+        }
     }
 }
