@@ -8,6 +8,9 @@ import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import okhttp3.*
+import okhttp3.FormBody
+import java.io.IOException
 
 class MarketFragment : Fragment() {
 
@@ -15,6 +18,9 @@ class MarketFragment : Fragment() {
     private val db = FirebaseDatabase.getInstance().reference
     private var shellBalance = 0.0
     private var userPhone = ""
+    
+    // OkHttp client for talking to your PHP server
+    private val client = OkHttpClient()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_market, container, false)
@@ -33,7 +39,7 @@ class MarketFragment : Fragment() {
 
         val uid = auth.currentUser?.uid ?: return
 
-        // 1. Sync User Data
+        // 1. Sync User Data (STAYS THE SAME)
         db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!isAdded) return
@@ -46,7 +52,7 @@ class MarketFragment : Fragment() {
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // 2. Save Phone Number
+        // 2. Save Phone Number (STAYS THE SAME)
         btnSaveNumber.setOnClickListener {
             val phone = etUserNumber.text.toString().trim()
             if (phone.length < 10) {
@@ -57,7 +63,7 @@ class MarketFragment : Fragment() {
             }
         }
 
-        // 3. Market: Buy with M-Pesa
+        // 3. Market: Buy with M-Pesa (NOW TRIGGERING PHP)
         btnBuyMpesa.setOnClickListener {
             val amountStr = etBuyAmount.text.toString()
             if (amountStr.isNotEmpty()) {
@@ -66,8 +72,8 @@ class MarketFragment : Fragment() {
                     if (userPhone.isEmpty()) {
                         Toast.makeText(context, "Please save your number first", Toast.LENGTH_SHORT).show()
                     } else {
-                        val toPay = amount * 0.98
-                        Toast.makeText(context, "Initiating STK Push for KES $toPay", Toast.LENGTH_LONG).show()
+                        // Triggers your PHP script on the free server
+                        triggerMpesaPush(userPhone, amount.toString())
                     }
                 } else {
                     Toast.makeText(context, "M-Pesa Buy: 5 - 500 KES", Toast.LENGTH_SHORT).show()
@@ -75,16 +81,14 @@ class MarketFragment : Fragment() {
             }
         }
 
-        // 4. Redeem: Shells to Airtime
+        // 4. Redeem: Shells to Airtime (STAYS THE SAME)
         btnRedeem.setOnClickListener {
             val redeemStr = etRedeemAmount.text.toString()
             if (redeemStr.isEmpty()) {
                 Toast.makeText(context, "Enter amount to redeem", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
             val amountToRedeem = redeemStr.toDouble()
-
             if (amountToRedeem < 3.0) {
                 Toast.makeText(context, "Minimum redeem is KES 3.00", Toast.LENGTH_SHORT).show()
             } else if (shellBalance < amountToRedeem) {
@@ -95,6 +99,40 @@ class MarketFragment : Fragment() {
                 processRedeem(uid, amountToRedeem)
             }
         }
+    }
+
+    private fun triggerMpesaPush(phone: String, amount: String) {
+        // Convert 07... to 254...
+        val formattedPhone = if (phone.startsWith("0")) "254" + phone.substring(1) else phone
+        
+        val formBody = FormBody.Builder()
+            .add("phone", formattedPhone)
+            .add("amount", amount)
+            .build()
+
+        val request = Request.Builder()
+            .url("https://magictortoise.xo.je/stk_push.php")
+            .post(formBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                activity?.runOnUiThread {
+                    Toast.makeText(context, "STK Push Failed: Server Unreachable", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseData = response.body?.string()
+                activity?.runOnUiThread {
+                    if (responseData?.contains("MerchantRequestID") == true) {
+                        Toast.makeText(context, "PIN Prompt Sent to $formattedPhone", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "M-Pesa Busy. Try Again.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        })
     }
 
     private fun processRedeem(uid: String, amount: Double) {
@@ -116,7 +154,7 @@ class MarketFragment : Fragment() {
                         "status" to "pending"
                     )
                     db.child("airtime_requests").push().setValue(request)
-                    Toast.makeText(context, "Redeem of $amount Shells successful!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Redeem request sent!", Toast.LENGTH_LONG).show()
                 }
             }
         })
