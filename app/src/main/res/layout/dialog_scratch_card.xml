@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="wrap_content"
+    android:background="#1A1A1A"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SCRATCH &amp; WIN"
+        android:textColor="#FFD700"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:layout_marginTop="20dp">
+
+        <TextView
+            android:id="@+id/tvScratchResult"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="REVEALING..."
+            android:textColor="#FFFFFF"
+            android:textSize="18sp" />
+
+        <View
+            android:id="@+id/scratchOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#808080" />
+    </FrameLayout>
+
+    <Button
+        android:id="@+id/btnClaimScratch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="CLAIM REWARD"
+        android:visibility="gone"
+        android:backgroundTint="#FF0000" />
+</LinearLayout>
