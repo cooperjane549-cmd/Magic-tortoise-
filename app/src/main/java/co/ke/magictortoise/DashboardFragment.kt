@@ -87,17 +87,10 @@ class DashboardFragment : Fragment() {
             startActivity(intent)
         }
 
-        // --- POP UP TRIGGERS ---
-        cardSpin?.setOnClickListener {
-            showSpinDialog()
-        }
-
-        cardScratch?.setOnClickListener {
-            showScratchDialog()
-        }
+        cardSpin?.setOnClickListener { showSpinDialog() }
+        cardScratch?.setOnClickListener { showScratchDialog() }
     }
 
-    // --- DAILY SPIN LOGIC ---
     private fun showSpinDialog() {
         val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
         val dialogView = layoutInflater.inflate(R.layout.dialog_spin_wheel, null)
@@ -110,27 +103,46 @@ class DashboardFragment : Fragment() {
         btnSpinAction.setOnClickListener {
             btnSpinAction.isEnabled = false
             
-            // Randomize result: 5% Big win, 25% Mid, 70% Small
-            val chance = Random.nextInt(100)
-            val (prize, rotation) = when {
-                chance < 5 -> 0.50 to (1080f + 45f)  // Big Win
-                chance < 30 -> 0.10 to (1080f + 135f) // Mid Win
-                else -> 0.02 to (1080f + 225f)        // Small Win
-            }
+            val sectorIndex = Random.nextInt(16) 
+            val degreesPerSector = 22.5f
+            val targetRotation = (360f * 10) + (360f - (sectorIndex * degreesPerSector))
 
             wheelImage.animate()
-                .rotation(rotation)
-                .setDuration(3000)
+                .rotationBy(targetRotation)
+                .setDuration(5000)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
                 .withEndAction {
-                    updateBalanceInFirebase(auth.currentUser?.uid ?: "", prize)
-                    Toast.makeText(context, "Won KES $prize!", Toast.LENGTH_SHORT).show()
+                    val prize = when(sectorIndex) {
+                        0 -> 0.0 // JACKPOT
+                        1 -> 0.0 // TRY AGAIN
+                        2 -> 0.50
+                        3 -> 0.10
+                        4 -> 0.20
+                        5 -> 0.50
+                        6 -> 0.20
+                        7 -> 0.10
+                        8 -> 0.05
+                        9 -> 0.01
+                        10 -> 0.01
+                        11 -> 0.05
+                        12 -> 0.05
+                        13 -> 0.10
+                        14 -> 0.0 // DOUBLE SPIN
+                        else -> 0.10
+                    }
+                    
+                    if (prize > 0) {
+                        updateBalanceInFirebase(auth.currentUser?.uid ?: "", prize)
+                        Toast.makeText(context, "The Magic Tortoise grants you KES $prize!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Unlucky! Try again tomorrow.", Toast.LENGTH_SHORT).show()
+                    }
                     dialog.dismiss()
                 }.start()
         }
         dialog.show()
     }
 
-    // --- SCRATCH CARD LOGIC ---
     private fun showScratchDialog() {
         val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
         val dialogView = layoutInflater.inflate(R.layout.dialog_scratch_card, null)
@@ -139,18 +151,25 @@ class DashboardFragment : Fragment() {
 
         val btnClaim = dialogView.findViewById<Button>(R.id.btnClaimScratch)
         val tvResult = dialogView.findViewById<TextView>(R.id.tvScratchResult)
+        val scratchOverlay = dialogView.findViewById<View>(R.id.scratchOverlay)
 
-        // For now, simple tap to reveal logic
-        dialogView.findViewById<View>(R.id.scratchOverlay).setOnClickListener { it ->
-            it.visibility = View.GONE
-            val prize = 0.05 // Fixed scratch prize for now
-            tvResult.text = "YOU REVEALED: KES $prize"
-            btnClaim.visibility = View.VISIBLE
-            
-            btnClaim.setOnClickListener {
-                updateBalanceInFirebase(auth.currentUser?.uid ?: "", prize)
-                dialog.dismiss()
+        val prize = 0.05
+        tvResult.text = "KES $prize"
+
+        scratchOverlay.setOnTouchListener { v, event ->
+            if (event.action == android.view.MotionEvent.ACTION_MOVE) {
+                v.alpha = v.alpha - 0.05f
+                if (v.alpha <= 0.1f) {
+                    v.visibility = View.GONE
+                    btnClaim.visibility = View.VISIBLE
+                }
             }
+            true
+        }
+
+        btnClaim.setOnClickListener {
+            updateBalanceInFirebase(auth.currentUser?.uid ?: "", prize)
+            dialog.dismiss()
         }
         dialog.show()
     }
@@ -185,7 +204,6 @@ class DashboardFragment : Fragment() {
         })
     }
 
-    // Shared update function for Ads
     private fun updateRewardInFirebase(uid: String) {
         db.child("users").child(uid).runTransaction(object : Transaction.Handler {
             override fun doTransaction(mutableData: MutableData): Transaction.Result {
@@ -201,7 +219,6 @@ class DashboardFragment : Fragment() {
         })
     }
 
-    // New shared update function for Spin/Scratch wins
     private fun updateBalanceInFirebase(uid: String, amount: Double) {
         db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
             override fun doTransaction(mutableData: MutableData): Transaction.Result {
