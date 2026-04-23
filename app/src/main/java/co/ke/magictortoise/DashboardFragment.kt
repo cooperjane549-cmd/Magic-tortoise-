@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.CountDownTimer
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -28,7 +27,6 @@ class DashboardFragment : Fragment() {
     
     private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
     private val UNITY_REWARDED_ID = "Rewarded_Android"
-
     private var countdownTimer: CountDownTimer? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -38,20 +36,22 @@ class DashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Find Views
         val tvBalance = view.findViewById<TextView>(R.id.tvBalance)
         val tvAdProgress = view.findViewById<TextView>(R.id.tvAdProgress)
         val adProgressBar = view.findViewById<ProgressBar>(R.id.adProgressBar)
         val btnWatchAd = view.findViewById<Button>(R.id.btnWatchAd)
         val tvCountdown = view.findViewById<TextView>(R.id.tvCountdown)
+        val tvLiveTicker = view.findViewById<TextView>(R.id.tvLiveTicker)
         val btnJoinTournament = view.findViewById<Button>(R.id.btnJoinTournament)
-        val cardSpin = view.findViewById<CardView>(R.id.card_daily_spin)
-        val cardScratch = view.findViewById<CardView>(R.id.card_scratch)
 
-        // Firebase Sync
+        // Enable Marquee for Live Ticker
+        tvLiveTicker.isSelected = true 
+
         val currentUser = auth.currentUser
         if (currentUser != null) {
             val uid = currentUser.uid
+            
+            // Sync Balance and Progress
             db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!isAdded) return
@@ -59,37 +59,35 @@ class DashboardFragment : Fragment() {
                     val adCycle = snapshot.child("adCycle").getValue(Int::class.java) ?: 0
                     
                     tvBalance?.text = String.format("%.2f", balance)
-                    tvAdProgress?.text = "Progress: $adCycle/35"
+                    tvAdProgress?.text = "Target: $adCycle/35"
                     adProgressBar?.progress = adCycle
                 }
                 override fun onCancelled(p0: DatabaseError) {}
             })
-            
-            // Sync Tournament Timer from Firebase (or set default)
+
+            // Sync Live Ticker from Firebase Settings
+            db.child("settings").child("liveTickerText").addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val ticker = snapshot.getValue(String::class.java) ?: "🔥 Start earning today with Magic Tortoise!"
+                    tvLiveTicker.text = ticker
+                }
+                override fun onCancelled(p0: DatabaseError) {}
+            })
+
             startTournamentCountdown(tvCountdown)
         }
 
         loadAd()
 
-        // --- BUTTON ACTIONS ---
-
-        btnWatchAd?.setOnClickListener {
-            handleAdsWaterfall()
-        }
-
-        cardSpin?.setOnClickListener {
-            Toast.makeText(context, "Opening Spin Wheel...", Toast.LENGTH_SHORT).show()
-            // Logic for Spin Wheel Dialog will go here
-        }
-
-        cardScratch?.setOnClickListener {
-            Toast.makeText(context, "Opening Scratch Card...", Toast.LENGTH_SHORT).show()
-        }
+        btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
 
         btnJoinTournament?.setOnClickListener {
-            // Your PesaPal Payment Link for 10/-
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://store.pesapal.com/magictortoise"))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://your-pesapal-link.com"))
             startActivity(intent)
+        }
+
+        view.findViewById<CardView>(R.id.card_daily_spin).setOnClickListener {
+            Toast.makeText(context, "Spinning Wheel...", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -105,12 +103,9 @@ class DashboardFragment : Fragment() {
     private fun showUnityAd(uid: String) {
         UnityAds.show(requireActivity(), UNITY_REWARDED_ID, object : IUnityAdsShowListener {
             override fun onUnityAdsShowComplete(placementId: String, state: UnityAds.UnityAdsShowCompletionState) {
-                if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) {
-                    updateRewardInFirebase(uid)
-                }
+                if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) updateRewardInFirebase(uid)
             }
             override fun onUnityAdsShowFailure(p0: String, p1: UnityAds.UnityAdsShowError, p2: String) {
-                Toast.makeText(context, "Ad loading... try again", Toast.LENGTH_SHORT).show()
                 loadAd()
             }
             override fun onUnityAdsShowStart(p0: String) {}
@@ -139,39 +134,28 @@ class DashboardFragment : Fragment() {
             override fun doTransaction(mutableData: MutableData): Transaction.Result {
                 val balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
                 val adCycle = mutableData.child("adCycle").getValue(Int::class.java) ?: 0
-
                 val nextCycle = if (adCycle >= 35) 1 else adCycle + 1
                 val rewardAmount = if (nextCycle <= 15) 0.067 else 0.05
-
                 mutableData.child("balance").value = balance + rewardAmount
                 mutableData.child("adCycle").value = nextCycle
-                
                 return Transaction.success(mutableData)
             }
-            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                if (committed && isAdded) {
-                    Toast.makeText(context, "Balance Updated!", Toast.LENGTH_SHORT).show()
-                    loadAd()
-                }
+            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) {
+                if (isAdded) loadAd()
             }
         })
     }
 
     private fun startTournamentCountdown(tvTimer: TextView) {
-        // Set target time (e.g., 9:00 PM today)
-        // For testing, let's set it to 3 hours from now
-        val millisInFuture: Long = 10800000 
-
+        val millisInFuture: Long = 14400000 // 4 Hours
         countdownTimer = object : CountDownTimer(millisInFuture, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val hours = (millisUntilFinished / 3600000) % 24
                 val mins = (millisUntilFinished / 60000) % 60
                 val secs = (millisUntilFinished / 1000) % 60
-                tvTimer.text = String.format("Starts in: %02d:%02d:%02d", hours, mins, secs)
+                tvTimer.text = String.format("%02d:%02d:%02d", hours, mins, secs)
             }
-            override fun onFinish() {
-                tvTimer.text = "LIVE NOW!"
-            }
+            override fun onFinish() { tvTimer.text = "LIVE!" }
         }.start()
     }
 
