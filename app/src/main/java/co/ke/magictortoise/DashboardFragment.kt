@@ -88,7 +88,7 @@ class DashboardFragment : Fragment() {
 
         btnJoinTournament?.setOnClickListener {
             // Your PesaPal Payment Link for 10/-
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://your-pesapal-link.com"))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://store.pesapal.com/magictortoise"))
             startActivity(intent)
         }
     }
