@@ -1,11 +1,15 @@
 package co.ke.magictortoise
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.cardview.widget.CardView
 import androidx.fragment.app.Fragment
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.rewarded.RewardedAd
@@ -23,7 +27,9 @@ class DashboardFragment : Fragment() {
     private val db = FirebaseDatabase.getInstance().reference
     
     private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
-    private val UNITY_REWARDED_ID = "Rewarded_Android" // Ensure this matches your Unity Dashboard
+    private val UNITY_REWARDED_ID = "Rewarded_Android"
+
+    private var countdownTimer: CountDownTimer? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_dashboard, container, false)
@@ -32,14 +38,17 @@ class DashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Find Views
         val tvBalance = view.findViewById<TextView>(R.id.tvBalance)
         val tvAdProgress = view.findViewById<TextView>(R.id.tvAdProgress)
         val adProgressBar = view.findViewById<ProgressBar>(R.id.adProgressBar)
         val btnWatchAd = view.findViewById<Button>(R.id.btnWatchAd)
-        val cardOfferWalls = view.findViewById<View>(R.id.cardOfferWalls)
-        val ivLocalBanner = view.findViewById<ImageView>(R.id.ivLocalBanner)
-        val cardLocalAd = view.findViewById<View>(R.id.cardLocalAd)
+        val tvCountdown = view.findViewById<TextView>(R.id.tvCountdown)
+        val btnJoinTournament = view.findViewById<Button>(R.id.btnJoinTournament)
+        val cardSpin = view.findViewById<CardView>(R.id.card_daily_spin)
+        val cardScratch = view.findViewById<CardView>(R.id.card_scratch)
 
+        // Firebase Sync
         val currentUser = auth.currentUser
         if (currentUser != null) {
             val uid = currentUser.uid
@@ -55,28 +64,41 @@ class DashboardFragment : Fragment() {
                 }
                 override fun onCancelled(p0: DatabaseError) {}
             })
-            loadLocalClientBanner(ivLocalBanner, cardLocalAd)
+            
+            // Sync Tournament Timer from Firebase (or set default)
+            startTournamentCountdown(tvCountdown)
         }
 
-        loadAd() // Pre-load AdMob
+        loadAd()
+
+        // --- BUTTON ACTIONS ---
 
         btnWatchAd?.setOnClickListener {
-            val uid = auth.currentUser?.uid
-            if (uid == null) {
-                Toast.makeText(context, "Please log in first", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+            handleAdsWaterfall()
+        }
 
-            // --- WATERFALL LOGIC ---
-            if (rewardedAd != null) {
-                // Try AdMob First
-                rewardedAd?.show(requireActivity()) { 
-                    updateRewardInFirebase(uid) 
-                }
-            } else {
-                // If AdMob fails, try Unity Second
-                showUnityAd(uid)
-            }
+        cardSpin?.setOnClickListener {
+            Toast.makeText(context, "Opening Spin Wheel...", Toast.LENGTH_SHORT).show()
+            // Logic for Spin Wheel Dialog will go here
+        }
+
+        cardScratch?.setOnClickListener {
+            Toast.makeText(context, "Opening Scratch Card...", Toast.LENGTH_SHORT).show()
+        }
+
+        btnJoinTournament?.setOnClickListener {
+            // Your PesaPal Payment Link for 10/-
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://your-pesapal-link.com"))
+            startActivity(intent)
+        }
+    }
+
+    private fun handleAdsWaterfall() {
+        val uid = auth.currentUser?.uid ?: return
+        if (rewardedAd != null) {
+            rewardedAd?.show(requireActivity()) { updateRewardInFirebase(uid) }
+        } else {
+            showUnityAd(uid)
         }
     }
 
@@ -88,8 +110,8 @@ class DashboardFragment : Fragment() {
                 }
             }
             override fun onUnityAdsShowFailure(p0: String, p1: UnityAds.UnityAdsShowError, p2: String) {
-                Toast.makeText(context, "No ads available, try in 5 seconds", Toast.LENGTH_SHORT).show()
-                loadAd() // Try reloading AdMob
+                Toast.makeText(context, "Ad loading... try again", Toast.LENGTH_SHORT).show()
+                loadAd()
             }
             override fun onUnityAdsShowStart(p0: String) {}
             override fun onUnityAdsShowClick(p0: String) {}
@@ -97,12 +119,10 @@ class DashboardFragment : Fragment() {
     }
 
     private fun loadAd() {
-        val currentContext = context ?: return
-        if (isAdLoading) return
+        if (isAdLoading || context == null) return
         isAdLoading = true
-
         val adRequest = AdRequest.Builder().build()
-        RewardedAd.load(currentContext, AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
+        RewardedAd.load(requireContext(), AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
             override fun onAdLoaded(ad: RewardedAd) {
                 rewardedAd = ad
                 isAdLoading = false
@@ -128,21 +148,35 @@ class DashboardFragment : Fragment() {
                 
                 return Transaction.success(mutableData)
             }
-
             override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
                 if (committed && isAdded) {
-                    Toast.makeText(context, "Reward Added!", Toast.LENGTH_SHORT).show()
-                    rewardedAd = null
-                    loadAd() // Pre-load next AdMob ad
+                    Toast.makeText(context, "Balance Updated!", Toast.LENGTH_SHORT).show()
+                    loadAd()
                 }
             }
         })
     }
 
-    private fun loadLocalClientBanner(imageView: ImageView?, card: View?) {
-        db.child("settings").child("localBannerUrl").get().addOnSuccessListener { snapshot ->
-            val url = snapshot.getValue(String::class.java)
-            if (url != null && isAdded) { /* Future Glide logic */ }
-        }
+    private fun startTournamentCountdown(tvTimer: TextView) {
+        // Set target time (e.g., 9:00 PM today)
+        // For testing, let's set it to 3 hours from now
+        val millisInFuture: Long = 10800000 
+
+        countdownTimer = object : CountDownTimer(millisInFuture, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val hours = (millisUntilFinished / 3600000) % 24
+                val mins = (millisUntilFinished / 60000) % 60
+                val secs = (millisUntilFinished / 1000) % 60
+                tvTimer.text = String.format("Starts in: %02d:%02d:%02d", hours, mins, secs)
+            }
+            override fun onFinish() {
+                tvTimer.text = "LIVE NOW!"
+            }
+        }.start()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        countdownTimer?.cancel()
     }
 }
