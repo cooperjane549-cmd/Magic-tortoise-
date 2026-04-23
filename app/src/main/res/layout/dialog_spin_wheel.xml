@@ -5,27 +5,30 @@
     android:background="#1A1A1A"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="20dp">
+    android:padding="24dp">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="LUCKY SPIN"
         android:textColor="#FFD700"
-        android:textSize="20sp"
+        android:textSize="22sp"
         android:textStyle="bold" />
 
     <ImageView
         android:id="@+id/ivWheel"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
+        android:layout_width="180dp"
+        android:layout_height="180dp"
         android:layout_marginTop="20dp"
-        android:src="@drawable/ic_wheel_graphic" /> <Button
+        android:src="@drawable/ic_wheel_graphic" />
+
+    <Button
         android:id="@+id/btnSpinAction"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="25dp"
         android:backgroundTint="#FF0000"
         android:text="SPIN NOW"
-        android:textColor="#FFFFFF" />
+        android:textColor="#FFFFFF"
+        android:textStyle="bold" />
 </LinearLayout>
