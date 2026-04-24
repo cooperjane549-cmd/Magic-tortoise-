@@ -14,6 +14,7 @@ class MarketFragment : Fragment() {
     private val db = FirebaseDatabase.getInstance().reference
     private val auth = FirebaseAuth.getInstance()
     private var myUsername: String? = null
+    private var currentJackpotDisplay: String = "0.00"
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_market, container, false)
@@ -45,8 +46,9 @@ class MarketFragment : Fragment() {
                 val grossAmount = count * 10.0
                 val netJackpot = grossAmount * 0.65 // Your 35% cut is removed here
                 
+                currentJackpotDisplay = String.format("%.2f", netJackpot)
                 tvPlayers.text = "Participants: $count"
-                tvJackpot.text = "WIN KES ${String.format("%.2f", netJackpot)}"
+                tvJackpot.text = "WIN KES $currentJackpotDisplay"
             }
             override fun onCancelled(error: DatabaseError) {}
         })
@@ -62,10 +64,6 @@ class MarketFragment : Fragment() {
                 syncProgress.progress = names.size
                 tvSyncList.text = if (names.isEmpty()) "Be the first to Sync!" 
                                    else "Joined: " + names.joinToString(", ")
-
-                if (names.size >= 6) {
-                    // Logic for 10-minute countdown starts here
-                }
             }
             override fun onCancelled(error: DatabaseError) {}
         })
@@ -83,7 +81,7 @@ class MarketFragment : Fragment() {
                     battleView.findViewById<TextView>(R.id.tvBattleStake).text = "Stake: KES $stake"
                     
                     battleView.findViewById<Button>(R.id.btnJoinBattle).setOnClickListener {
-                        // Trigger P2P Join Logic
+                        // Logic for joining will go here
                     }
                     p2pContainer.addView(battleView)
                 }
@@ -104,7 +102,19 @@ class MarketFragment : Fragment() {
             if (myUsername.isNullOrEmpty()) {
                 Toast.makeText(context, "Complete Profile in Support tab first!", Toast.LENGTH_SHORT).show()
             } else {
+                // Deduct money first
                 handleTransaction(uid, 10.0, "tournament")
+                
+                // Show the Pop-up via MainActivity with the REAL dynamic jackpot
+                (activity as? MainActivity)?.showTournamentOverlay(currentJackpotDisplay)
+            }
+        }
+        
+        btnCreateBattle.setOnClickListener {
+             if (myUsername.isNullOrEmpty()) {
+                Toast.makeText(context, "Complete Profile in Support tab first!", Toast.LENGTH_SHORT).show()
+            } else {
+                // Next step: Show P2P Pop-up
             }
         }
     }
@@ -123,7 +133,7 @@ class MarketFragment : Fragment() {
                 if (committed) {
                     if (type == "sync") {
                         db.child("sync_active").child("participants").child(uid).child("name").setValue(myUsername)
-                    } else {
+                    } else if (type == "tournament") {
                         db.child("tournaments").child("active").child("players").child(uid).setValue(true)
                     }
                 } else {
