@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/cyber_black"
+    android:background="#000000"
     android:padding="16dp">
 
     <LinearLayout
@@ -11,12 +11,20 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TOP UP ACCOUNT"
+            android:textColor="#FFD700"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/glass_white"
             app:cardCornerRadius="12dp"
-            app:cardElevation="0dp">
+            app:cardBackgroundColor="#1A1A1A"
+            android:layout_marginBottom="20dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -25,109 +33,111 @@
                 android:padding="16dp">
 
                 <TextView
-                    android:id="@+id/tvPremiumStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="STATUS: RESTRICTED"
-                    android:textColor="@color/text_gray"
-                    android:textStyle="bold"
-                    android:textSize="12sp"/>
+                    android:text="Secure Payment via PesaPal"
+                    android:textColor="#888"
+                    android:textSize="12sp" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Spend KES 50 in Market to unlock full rewards"
-                    android:textColor="@color/primary_red"
-                    android:textSize="13sp"
-                    android:layout_marginTop="4dp"/>
+                <Button
+                    android:id="@+id/btnDeposit"
+                    android:layout_width="match_parent"
+                    android:layout_height="55dp"
+                    android:text="DEPOSIT NOW"
+                    android:backgroundTint="#FFD700"
+                    android:textColor="#000"
+                    android:textStyle="bold"
+                    android:layout_marginTop="10dp"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="REFERRAL PROGRAM"
-            android:textColor="@color/primary_red"
+            android:text="WITHDRAW CASH"
+            android:textColor="#FFD700"
             android:textStyle="bold"
-            android:layout_marginTop="24dp"/>
+            android:layout_marginBottom="8dp"/>
 
-        <LinearLayout
+        <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="10dp">
+            app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="#1A1A1A"
+            android:layout_marginBottom="20dp">
 
-            <TextView
-                android:id="@+id/tvMyReferralCode"
-                android:layout_width="0dp"
-                android:layout_height="55dp"
-                android:layout_weight="1"
-                android:background="@drawable/glass_border_red"
-                android:gravity="center"
-                android:hint="CODE"
-                android:textColor="@color/white"
-                android:textColorHint="@color/text_gray"
-                android:textStyle="bold" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <Button
-                android:id="@+id/btnShareCode"
-                android:layout_width="wrap_content"
-                android:layout_height="55dp"
-                android:layout_marginStart="10dp"
-                android:text="SHARE"
-                android:backgroundTint="@color/primary_red"
-                app:cornerRadius="8dp"/>
-        </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Withdrawals processed to M-Pesa"
+                    android:textColor="#888"
+                    android:textSize="12sp" />
 
-        <EditText
-            android:id="@+id/etInputReferral"
-            android:layout_width="match_parent"
-            android:layout_height="55dp"
-            android:layout_marginTop="12dp"
-            android:hint="Enter Friend's Code"
-            android:textColor="@color/white"
-            android:textColorHint="@color/text_gray"
-            android:background="@drawable/glass_border_red"
-            android:padding="12dp"
-            android:inputType="textCapCharacters"/>
-
-        <Button
-            android:id="@+id/btnClaimReferral"
-            android:layout_width="match_parent"
-            android:layout_height="55dp"
-            android:layout_marginTop="12dp"
-            android:text="CLAIM KES 0.50 BONUS"
-            android:backgroundTint="@color/cyber_black"
-            android:textColor="@color/primary_red"
-            app:strokeColor="@color/primary_red"
-            app:strokeWidth="1dp"
-            app:cornerRadius="12dp"/>
-
-        <Button
-            android:id="@+id/btnDailyCheckIn"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="24dp"
-            android:text="DAILY CHECK-IN (0.10)"
-            android:backgroundTint="@color/secondary_red"
-            android:textStyle="bold"
-            app:cornerRadius="12dp"/>
+                <Button
+                    android:id="@+id/btnWithdraw"
+                    android:layout_width="match_parent"
+                    android:layout_height="55dp"
+                    android:text="REQUEST WITHDRAWAL"
+                    android:backgroundTint="#333333"
+                    android:textColor="#FFF"
+                    android:layout_marginTop="10dp"/>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="WEEKLY AD KING LEADERBOARD"
-            android:textColor="@color/primary_red"
+            android:text="REFER &amp; EARN"
+            android:textColor="#FFD700"
             android:textStyle="bold"
-            android:layout_marginTop="24dp"/>
+            android:layout_marginBottom="8dp"/>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvLeaderboard"
+        <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
-            android:layout_height="400dp"
-            android:layout_marginTop="10dp"
-            android:background="@color/glass_white"
-            android:padding="8dp"/>
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="#1A1A1A">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/tvReferralCode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CODE: ------"
+                    android:textColor="#FFFFFF"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Get 0.50/- when they deposit 20/-"
+                    android:textColor="#888"
+                    android:textSize="12sp"
+                    android:layout_marginTop="5dp"/>
+
+                <Button
+                    android:id="@+id/btnInvite"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:text="INVITE FRIENDS"
+                    android:backgroundTint="#FFD700"
+                    android:textColor="#000"
+                    android:layout_marginTop="15dp"/>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
     </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+</ScrollView>
