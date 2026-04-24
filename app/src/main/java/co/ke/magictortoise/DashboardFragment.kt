@@ -1,7 +1,5 @@
 package co.ke.magictortoise
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.LayoutInflater
@@ -18,6 +16,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.unity3d.ads.IUnityAdsShowListener
 import com.unity3d.ads.UnityAds
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlin.random.Random
 
 class DashboardFragment : Fragment() {
@@ -82,9 +81,11 @@ class DashboardFragment : Fragment() {
 
         btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
 
+        // REDIRECT TO MARKET TAB
         btnJoinTournament?.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://store.pesapal.com/magictortoise"))
-            startActivity(intent)
+            val bottomNav = activity?.findViewById<BottomNavigationView>(R.id.bottom_navigation)
+            bottomNav?.selectedItemId = R.id.nav_market 
+            // Note: Replace 'nav_market' with the actual ID you used in your menu/bottom_nav XML
         }
 
         cardSpin?.setOnClickListener { showSpinDialog() }
@@ -113,8 +114,8 @@ class DashboardFragment : Fragment() {
                 .setInterpolator(android.view.animation.DecelerateInterpolator())
                 .withEndAction {
                     val prize = when(sectorIndex) {
-                        0 -> 0.0 // JACKPOT
-                        1 -> 0.0 // TRY AGAIN
+                        0 -> 0.0 
+                        1 -> 0.0 
                         2 -> 0.50
                         3 -> 0.10
                         4 -> 0.20
@@ -127,7 +128,7 @@ class DashboardFragment : Fragment() {
                         11 -> 0.05
                         12 -> 0.05
                         13 -> 0.10
-                        14 -> 0.0 // DOUBLE SPIN
+                        14 -> 0.0 
                         else -> 0.10
                     }
                     
