@@ -70,10 +70,12 @@ class MarketFragment : Fragment() {
                 snapshot.children.forEach { battle ->
                     val creator = battle.child("name").value.toString()
                     val stake = battle.child("stake").value.toString()
+                    val gameType = battle.child("game").value?.toString() ?: "Trivia Duel"
                     val battleUid = battle.key ?: ""
 
                     val battleView = layoutInflater.inflate(R.layout.item_p2p_battle, null)
-                    battleView.findViewById<TextView>(R.id.tvBattleTitle).text = "$creator's Battle"
+                    // We update the title to show the specific game chosen
+                    battleView.findViewById<TextView>(R.id.tvBattleTitle).text = "$creator: $gameType"
                     battleView.findViewById<TextView>(R.id.tvBattleStake).text = "Stake: KES $stake"
                     
                     battleView.findViewById<Button>(R.id.btnJoinBattle).setOnClickListener {
@@ -106,22 +108,31 @@ class MarketFragment : Fragment() {
     private fun showCreateBattleDialog(uid: String) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_create_battle, null)
         val dialog = AlertDialog.Builder(context).setView(dialogView).create()
+        
         val etStake = dialogView.findViewById<EditText>(R.id.etStakeAmount)
         val btnPost = dialogView.findViewById<Button>(R.id.btnPostBattle)
+        val spinner = dialogView.findViewById<Spinner>(R.id.spinnerGameType)
+
+        // Set up the Game Choice Menu
+        val games = arrayOf("Math Blitz", "Tap Tortoise", "Trivia Duel")
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, games)
+        spinner.adapter = adapter
 
         btnPost.setOnClickListener {
             val amount = etStake.text.toString().toDoubleOrNull() ?: 0.0
+            val selectedGame = spinner.selectedItem.toString()
+
             if (amount < 20.0) {
                 Toast.makeText(context, "Minimum stake is 20/-", Toast.LENGTH_SHORT).show()
             } else {
-                handleTransaction(uid, amount, "p2p_create")
+                handleTransaction(uid, amount, "p2p_create", selectedGame)
                 dialog.dismiss()
             }
         }
         dialog.show()
     }
 
-    private fun handleTransaction(uid: String, amount: Double, type: String, extraId: String = "") {
+    private fun handleTransaction(uid: String, amount: Double, type: String, extraData: String = "") {
         db.child("users").child(uid).runTransaction(object : Transaction.Handler {
             override fun doTransaction(mutableData: MutableData): Transaction.Result {
                 val balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
@@ -136,7 +147,12 @@ class MarketFragment : Fragment() {
                         "sync" -> db.child("sync_active").child("participants").child(uid).child("name").setValue(myUsername)
                         "tournament" -> db.child("tournaments").child("active").child("players").child(uid).setValue(true)
                         "p2p_create" -> {
-                            val battle = mapOf("name" to myUsername, "stake" to amount, "status" to "waiting")
+                            val battle = mapOf(
+                                "name" to myUsername, 
+                                "stake" to amount, 
+                                "game" to extraData, // ExtraData stores Game Type
+                                "status" to "waiting"
+                            )
                             db.child("p2p_lobby").child(uid).setValue(battle)
                         }
                     }
