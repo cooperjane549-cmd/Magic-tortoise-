@@ -83,7 +83,7 @@ class DashboardFragment : Fragment() {
         btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
 
         btnJoinTournament?.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://your-pesapal-link.com"))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://store.pesapal.com/magictortoise"))
             startActivity(intent)
         }
 
