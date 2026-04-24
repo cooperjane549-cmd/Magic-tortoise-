@@ -47,7 +47,7 @@ class DashboardFragment : Fragment() {
         val cardSpin = view.findViewById<CardView>(R.id.card_daily_spin)
         val cardScratch = view.findViewById<CardView>(R.id.card_scratch)
 
-        tvLiveTicker.isSelected = true 
+        tvLiveTicker?.isSelected = true 
 
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -69,7 +69,7 @@ class DashboardFragment : Fragment() {
             db.child("settings").child("liveTickerText").addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val ticker = snapshot.getValue(String::class.java) ?: "🔥 Start earning today with Magic Tortoise!"
-                    tvLiveTicker.text = ticker
+                    tvLiveTicker?.text = ticker
                 }
                 override fun onCancelled(p0: DatabaseError) {}
             })
@@ -83,9 +83,16 @@ class DashboardFragment : Fragment() {
 
         // REDIRECT TO MARKET TAB
         btnJoinTournament?.setOnClickListener {
-            val bottomNav = activity?.findViewById<BottomNavigationView>(R.id.bottom_navigation)
-            bottomNav?.selectedItemId = R.id.nav_market 
-            // Note: Replace 'nav_market' with the actual ID you used in your menu/bottom_nav XML
+            // This looks for the Bottom Navigation in the Parent Activity
+            val bottomNav = activity?.findViewById<BottomNavigationView>(R.id.bottom_navigation) 
+                ?: activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation) // Common alternative ID
+            
+            if (bottomNav != null) {
+                bottomNav.selectedItemId = R.id.nav_market
+            } else {
+                // If it still can't find it, we'll log it or show a message
+                Toast.makeText(context, "Navigating to Market...", Toast.LENGTH_SHORT).show()
+            }
         }
 
         cardSpin?.setOnClickListener { showSpinDialog() }
@@ -101,18 +108,18 @@ class DashboardFragment : Fragment() {
         val wheelImage = dialogView.findViewById<ImageView>(R.id.ivWheel)
         val btnSpinAction = dialogView.findViewById<Button>(R.id.btnSpinAction)
 
-        btnSpinAction.setOnClickListener {
+        btnSpinAction?.setOnClickListener {
             btnSpinAction.isEnabled = false
             
             val sectorIndex = Random.nextInt(16) 
             val degreesPerSector = 22.5f
             val targetRotation = (360f * 10) + (360f - (sectorIndex * degreesPerSector))
 
-            wheelImage.animate()
-                .rotationBy(targetRotation)
-                .setDuration(5000)
-                .setInterpolator(android.view.animation.DecelerateInterpolator())
-                .withEndAction {
+            wheelImage?.animate()
+                ?.rotationBy(targetRotation)
+                ?.setDuration(5000)
+                ?.setInterpolator(android.view.animation.DecelerateInterpolator())
+                ?.withEndAction {
                     val prize = when(sectorIndex) {
                         0 -> 0.0 
                         1 -> 0.0 
@@ -139,7 +146,7 @@ class DashboardFragment : Fragment() {
                         Toast.makeText(context, "Unlucky! Try again tomorrow.", Toast.LENGTH_SHORT).show()
                     }
                     dialog.dismiss()
-                }.start()
+                }?.start()
         }
         dialog.show()
     }
@@ -155,20 +162,20 @@ class DashboardFragment : Fragment() {
         val scratchOverlay = dialogView.findViewById<View>(R.id.scratchOverlay)
 
         val prize = 0.05
-        tvResult.text = "KES $prize"
+        tvResult?.text = "KES $prize"
 
-        scratchOverlay.setOnTouchListener { v, event ->
+        scratchOverlay?.setOnTouchListener { v, event ->
             if (event.action == android.view.MotionEvent.ACTION_MOVE) {
                 v.alpha = v.alpha - 0.05f
                 if (v.alpha <= 0.1f) {
                     v.visibility = View.GONE
-                    btnClaim.visibility = View.VISIBLE
+                    btnClaim?.visibility = View.VISIBLE
                 }
             }
             true
         }
 
-        btnClaim.setOnClickListener {
+        btnClaim?.setOnClickListener {
             updateBalanceInFirebase(auth.currentUser?.uid ?: "", prize)
             dialog.dismiss()
         }
@@ -231,16 +238,16 @@ class DashboardFragment : Fragment() {
         })
     }
 
-    private fun startTournamentCountdown(tvTimer: TextView) {
+    private fun startTournamentCountdown(tvTimer: TextView?) {
         val millisInFuture: Long = 14400000 
         countdownTimer = object : CountDownTimer(millisInFuture, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val hours = (millisUntilFinished / 3600000) % 24
                 val mins = (millisUntilFinished / 60000) % 60
                 val secs = (millisUntilFinished / 1000) % 60
-                tvTimer.text = String.format("%02d:%02d:%02d", hours, mins, secs)
+                tvTimer?.text = String.format("%02d:%02d:%02d", hours, mins, secs)
             }
-            override fun onFinish() { tvTimer.text = "LIVE!" }
+            override fun onFinish() { tvTimer?.text = "LIVE!" }
         }.start()
     }
 
