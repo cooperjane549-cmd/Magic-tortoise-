@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/tournamentOverlayRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -14,8 +15,7 @@
         android:layout_centerInParent="true"
         android:layout_margin="30dp"
         app:cardCornerRadius="20dp"
-        app:cardBackgroundColor="#1A1A1A"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
+        app:cardBackgroundColor="#1A1A1A">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -56,7 +56,8 @@
         android:id="@+id/ivFloatingTortoise"
         android:layout_width="60dp"
         android:layout_height="60dp"
-        android:src="@drawable/ic_launcher_foreground" 
+        android:padding="10dp"
+        android:src="@android:drawable/ic_menu_info_details" 
         android:background="@drawable/bg_circle_gold"
         android:visibility="gone"
         android:layout_alignParentEnd="true"
