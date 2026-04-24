@@ -81,22 +81,35 @@ class DashboardFragment : Fragment() {
 
         btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
 
-        // REDIRECT TO MARKET TAB
+        // REDIRECT TO MARKET TAB: Improved "Universal" Fix
         btnJoinTournament?.setOnClickListener {
-            // This looks for the Bottom Navigation in the Parent Activity
-            val bottomNav = activity?.findViewById<BottomNavigationView>(R.id.bottom_navigation) 
-                ?: activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation) // Common alternative ID
-            
+            // Instead of looking for a specific ID, we find the first BottomNavigationView in the Activity
+            val activityView = activity?.window?.decorView
+            val bottomNav = findBottomNav(activityView)
+
             if (bottomNav != null) {
+                // This assumes your menu item ID for Market is 'nav_market'
+                // If it crashes here, check your bottom_nav_menu.xml IDs
                 bottomNav.selectedItemId = R.id.nav_market
             } else {
-                // If it still can't find it, we'll log it or show a message
                 Toast.makeText(context, "Navigating to Market...", Toast.LENGTH_SHORT).show()
             }
         }
 
         cardSpin?.setOnClickListener { showSpinDialog() }
         cardScratch?.setOnClickListener { showScratchDialog() }
+    }
+
+    // Helper function to find navigation without needing a specific ID
+    private fun findBottomNav(view: View?): BottomNavigationView? {
+        if (view is BottomNavigationView) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val result = findBottomNav(view.getChildAt(i))
+                if (result != null) return result
+            }
+        }
+        return null
     }
 
     private fun showSpinDialog() {
