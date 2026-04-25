@@ -53,6 +53,7 @@ class DashboardFragment : Fragment() {
         if (currentUser != null) {
             val uid = currentUser.uid
             
+            // Sync Balance and Ad Cycle
             db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!isAdded) return
@@ -66,14 +67,6 @@ class DashboardFragment : Fragment() {
                 override fun onCancelled(p0: DatabaseError) {}
             })
 
-            db.child("settings").child("liveTickerText").addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val ticker = snapshot.getValue(String::class.java) ?: "🔥 Start earning today with Magic Tortoise!"
-                    tvLiveTicker?.text = ticker
-                }
-                override fun onCancelled(p0: DatabaseError) {}
-            })
-
             startTournamentCountdown(tvCountdown)
         }
 
@@ -81,90 +74,33 @@ class DashboardFragment : Fragment() {
 
         btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
 
-        // REDIRECT TO MARKET TAB: Improved "Universal" Fix
         btnJoinTournament?.setOnClickListener {
-            // Instead of looking for a specific ID, we find the first BottomNavigationView in the Activity
-            val activityView = activity?.window?.decorView
-            val bottomNav = findBottomNav(activityView)
-
-            if (bottomNav != null) {
-                // This assumes your menu item ID for Market is 'nav_market'
-                // If it crashes here, check your bottom_nav_menu.xml IDs
-                bottomNav.selectedItemId = R.id.nav_market
-            } else {
-                Toast.makeText(context, "Navigating to Market...", Toast.LENGTH_SHORT).show()
-            }
+            val bottomNav = findBottomNav(activity?.window?.decorView)
+            bottomNav?.selectedItemId = R.id.nav_market
         }
 
         cardSpin?.setOnClickListener { showSpinDialog() }
-        cardScratch?.setOnClickListener { showScratchDialog() }
+        
+        // Tightened: Scratch logic checks time first
+        cardScratch?.setOnClickListener { checkScratchEligibility() }
     }
 
-    // Helper function to find navigation without needing a specific ID
-    private fun findBottomNav(view: View?): BottomNavigationView? {
-        if (view is BottomNavigationView) return view
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                val result = findBottomNav(view.getChildAt(i))
-                if (result != null) return result
+    private fun checkScratchEligibility() {
+        val uid = auth.currentUser?.uid ?: return
+        db.child("users").child(uid).child("lastScratch").get().addOnSuccessListener { snapshot ->
+            val lastTime = snapshot.getValue(Long::class.java) ?: 0L
+            val currentTime = System.currentTimeMillis()
+            
+            // 86,400,000 ms = 24 Hours
+            if (currentTime >= (lastTime + 86400000L)) {
+                showScratchDialog(uid)
+            } else {
+                Toast.makeText(context, "Tortoise says: Wait 24 hours to scratch again!", Toast.LENGTH_SHORT).show()
             }
         }
-        return null
     }
 
-    private fun showSpinDialog() {
-        val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_spin_wheel, null)
-        builder.setView(dialogView)
-        val dialog = builder.create()
-
-        val wheelImage = dialogView.findViewById<ImageView>(R.id.ivWheel)
-        val btnSpinAction = dialogView.findViewById<Button>(R.id.btnSpinAction)
-
-        btnSpinAction?.setOnClickListener {
-            btnSpinAction.isEnabled = false
-            
-            val sectorIndex = Random.nextInt(16) 
-            val degreesPerSector = 22.5f
-            val targetRotation = (360f * 10) + (360f - (sectorIndex * degreesPerSector))
-
-            wheelImage?.animate()
-                ?.rotationBy(targetRotation)
-                ?.setDuration(5000)
-                ?.setInterpolator(android.view.animation.DecelerateInterpolator())
-                ?.withEndAction {
-                    val prize = when(sectorIndex) {
-                        0 -> 0.0 
-                        1 -> 0.0 
-                        2 -> 0.50
-                        3 -> 0.10
-                        4 -> 0.20
-                        5 -> 0.50
-                        6 -> 0.20
-                        7 -> 0.10
-                        8 -> 0.05
-                        9 -> 0.01
-                        10 -> 0.01
-                        11 -> 0.05
-                        12 -> 0.05
-                        13 -> 0.10
-                        14 -> 0.0 
-                        else -> 0.10
-                    }
-                    
-                    if (prize > 0) {
-                        updateBalanceInFirebase(auth.currentUser?.uid ?: "", prize)
-                        Toast.makeText(context, "The Magic Tortoise grants you KES $prize!", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(context, "Unlucky! Try again tomorrow.", Toast.LENGTH_SHORT).show()
-                    }
-                    dialog.dismiss()
-                }?.start()
-        }
-        dialog.show()
-    }
-
-    private fun showScratchDialog() {
+    private fun showScratchDialog(uid: String) {
         val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
         val dialogView = layoutInflater.inflate(R.layout.dialog_scratch_card, null)
         builder.setView(dialogView)
@@ -189,25 +125,112 @@ class DashboardFragment : Fragment() {
         }
 
         btnClaim?.setOnClickListener {
-            updateBalanceInFirebase(auth.currentUser?.uid ?: "", prize)
+            updateBalanceAndTimestamp(uid, prize)
             dialog.dismiss()
         }
         dialog.show()
     }
 
+    private fun updateBalanceAndTimestamp(uid: String, prize: Double) {
+        val updates = hashMapOf<String, Any>(
+            "balance" to ServerValue.increment(prize),
+            "lastScratch" to ServerValue.TIMESTAMP
+        )
+        db.child("users").child(uid).updateChildren(updates)
+    }
+
     private fun handleAdsWaterfall() {
         val uid = auth.currentUser?.uid ?: return
         if (rewardedAd != null) {
-            rewardedAd?.show(requireActivity()) { updateRewardInFirebase(uid) }
+            rewardedAd?.show(requireActivity()) { updateAdReward(uid) }
         } else {
             showUnityAd(uid)
         }
     }
 
+    private fun updateAdReward(uid: String) {
+        db.child("users").child(uid).runTransaction(object : Transaction.Handler {
+            override fun doTransaction(mutableData: MutableData): Transaction.Result {
+                val balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
+                val adCycle = mutableData.child("adCycle").getValue(Int::class.java) ?: 0
+                
+                // Tightened: Fixed 0.02 Reward
+                mutableData.child("balance").value = balance + 0.02
+                mutableData.child("adCycle").value = if (adCycle >= 35) 1 else adCycle + 1
+                return Transaction.success(mutableData)
+            }
+            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) { if (isAdded) loadAd() }
+        })
+    }
+
+    private fun showSpinDialog() {
+        val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_spin_wheel, null)
+        builder.setView(dialogView)
+        val dialog = builder.create()
+
+        val wheelImage = dialogView.findViewById<ImageView>(R.id.ivWheel)
+        val btnSpinAction = dialogView.findViewById<Button>(R.id.btnSpinAction)
+
+        btnSpinAction?.setOnClickListener {
+            btnSpinAction.isEnabled = false
+            val sectorIndex = Random.nextInt(16) 
+            val targetRotation = (360f * 10) + (360f - (sectorIndex * 22.5f))
+
+            wheelImage?.animate()
+                ?.rotationBy(targetRotation)
+                ?.setDuration(5000)
+                ?.withEndAction {
+                    val prize = when(sectorIndex) {
+                        2, 5 -> 0.50
+                        3, 7, 13 -> 0.10
+                        4, 6 -> 0.20
+                        8, 11, 12 -> 0.05
+                        9, 10, 15 -> 0.01
+                        else -> 0.0 
+                    }
+                    if (prize > 0) updateBalanceOnly(auth.currentUser?.uid ?: "", prize)
+                    dialog.dismiss()
+                }?.start()
+        }
+        dialog.show()
+    }
+
+    private fun updateBalanceOnly(uid: String, amount: Double) {
+        db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
+            override fun doTransaction(data: MutableData): Transaction.Result {
+                val current = data.getValue(Double::class.java) ?: 0.0
+                data.value = current + amount
+                return Transaction.success(data)
+            }
+            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) {}
+        })
+    }
+
+    private fun findBottomNav(view: View?): BottomNavigationView? {
+        if (view is BottomNavigationView) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val result = findBottomNav(view.getChildAt(i))
+                if (result != null) return result
+            }
+        }
+        return null
+    }
+
+    private fun loadAd() {
+        if (isAdLoading || context == null) return
+        isAdLoading = true
+        RewardedAd.load(requireContext(), AD_UNIT_ID, AdRequest.Builder().build(), object : RewardedAdLoadCallback() {
+            override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad; isAdLoading = false }
+            override fun onAdFailedToLoad(e: LoadAdError) { rewardedAd = null; isAdLoading = false }
+        })
+    }
+
     private fun showUnityAd(uid: String) {
         UnityAds.show(requireActivity(), UNITY_REWARDED_ID, object : IUnityAdsShowListener {
             override fun onUnityAdsShowComplete(p0: String, state: UnityAds.UnityAdsShowCompletionState) {
-                if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) updateRewardInFirebase(uid)
+                if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) updateAdReward(uid)
             }
             override fun onUnityAdsShowFailure(p0: String, p1: UnityAds.UnityAdsShowError, p2: String) { loadAd() }
             override fun onUnityAdsShowStart(p0: String) {}
@@ -215,50 +238,13 @@ class DashboardFragment : Fragment() {
         })
     }
 
-    private fun loadAd() {
-        if (isAdLoading || context == null) return
-        isAdLoading = true
-        val adRequest = AdRequest.Builder().build()
-        RewardedAd.load(requireContext(), AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
-            override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad; isAdLoading = false }
-            override fun onAdFailedToLoad(e: LoadAdError) { rewardedAd = null; isAdLoading = false }
-        })
-    }
-
-    private fun updateRewardInFirebase(uid: String) {
-        db.child("users").child(uid).runTransaction(object : Transaction.Handler {
-            override fun doTransaction(mutableData: MutableData): Transaction.Result {
-                val balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
-                val adCycle = mutableData.child("adCycle").getValue(Int::class.java) ?: 0
-                val nextCycle = if (adCycle >= 35) 1 else adCycle + 1
-                val rewardAmount = if (nextCycle <= 15) 0.067 else 0.05
-                mutableData.child("balance").value = balance + rewardAmount
-                mutableData.child("adCycle").value = nextCycle
-                return Transaction.success(mutableData)
-            }
-            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) { if (isAdded) loadAd() }
-        })
-    }
-
-    private fun updateBalanceInFirebase(uid: String, amount: Double) {
-        db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
-            override fun doTransaction(mutableData: MutableData): Transaction.Result {
-                val current = mutableData.getValue(Double::class.java) ?: 0.0
-                mutableData.value = current + amount
-                return Transaction.success(mutableData)
-            }
-            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) {}
-        })
-    }
-
     private fun startTournamentCountdown(tvTimer: TextView?) {
-        val millisInFuture: Long = 14400000 
-        countdownTimer = object : CountDownTimer(millisInFuture, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                val hours = (millisUntilFinished / 3600000) % 24
-                val mins = (millisUntilFinished / 60000) % 60
-                val secs = (millisUntilFinished / 1000) % 60
-                tvTimer?.text = String.format("%02d:%02d:%02d", hours, mins, secs)
+        countdownTimer = object : CountDownTimer(14400000, 1000) {
+            override fun onTick(ms: Long) {
+                val h = (ms / 3600000) % 24
+                val m = (ms / 60000) % 60
+                val s = (ms / 1000) % 60
+                tvTimer?.text = String.format("%02d:%02d:%02d", h, m, s)
             }
             override fun onFinish() { tvTimer?.text = "LIVE!" }
         }.start()
