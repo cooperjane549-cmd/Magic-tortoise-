@@ -53,7 +53,7 @@ class DashboardFragment : Fragment() {
         if (currentUser != null) {
             val uid = currentUser.uid
             
-            // Sync Balance and Ad Cycle
+            // Sync UI with Firebase
             db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!isAdded) return
@@ -75,92 +75,33 @@ class DashboardFragment : Fragment() {
         btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
 
         btnJoinTournament?.setOnClickListener {
-            val bottomNav = findBottomNav(activity?.window?.decorView)
+            val activityView = activity?.window?.decorView
+            val bottomNav = findBottomNav(activityView)
             bottomNav?.selectedItemId = R.id.nav_market
         }
 
-        cardSpin?.setOnClickListener { showSpinDialog() }
-        
-        // Tightened: Scratch logic checks time first
-        cardScratch?.setOnClickListener { checkScratchEligibility() }
+        // TIGHTENED: 24hr Spin Logic
+        cardSpin?.setOnClickListener {
+            checkDailyLimit("lastSpin") { showSpinDialog() }
+        }
+
+        // TIGHTENED: 24hr Scratch Logic
+        cardScratch?.setOnClickListener {
+            checkDailyLimit("lastScratch") { showScratchDialog() }
+        }
     }
 
-    private fun checkScratchEligibility() {
+    private fun checkDailyLimit(nodeName: String, onAvailable: () -> Unit) {
         val uid = auth.currentUser?.uid ?: return
-        db.child("users").child(uid).child("lastScratch").get().addOnSuccessListener { snapshot ->
+        db.child("users").child(uid).child(nodeName).get().addOnSuccessListener { snapshot ->
             val lastTime = snapshot.getValue(Long::class.java) ?: 0L
             val currentTime = System.currentTimeMillis()
-            
-            // 86,400,000 ms = 24 Hours
             if (currentTime >= (lastTime + 86400000L)) {
-                showScratchDialog(uid)
+                onAvailable()
             } else {
-                Toast.makeText(context, "Tortoise says: Wait 24 hours to scratch again!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Tortoise says: Try again in 24 hours!", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun showScratchDialog(uid: String) {
-        val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_scratch_card, null)
-        builder.setView(dialogView)
-        val dialog = builder.create()
-
-        val btnClaim = dialogView.findViewById<Button>(R.id.btnClaimScratch)
-        val tvResult = dialogView.findViewById<TextView>(R.id.tvScratchResult)
-        val scratchOverlay = dialogView.findViewById<View>(R.id.scratchOverlay)
-
-        val prize = 0.05
-        tvResult?.text = "KES $prize"
-
-        scratchOverlay?.setOnTouchListener { v, event ->
-            if (event.action == android.view.MotionEvent.ACTION_MOVE) {
-                v.alpha = v.alpha - 0.05f
-                if (v.alpha <= 0.1f) {
-                    v.visibility = View.GONE
-                    btnClaim?.visibility = View.VISIBLE
-                }
-            }
-            true
-        }
-
-        btnClaim?.setOnClickListener {
-            updateBalanceAndTimestamp(uid, prize)
-            dialog.dismiss()
-        }
-        dialog.show()
-    }
-
-    private fun updateBalanceAndTimestamp(uid: String, prize: Double) {
-        val updates = hashMapOf<String, Any>(
-            "balance" to ServerValue.increment(prize),
-            "lastScratch" to ServerValue.TIMESTAMP
-        )
-        db.child("users").child(uid).updateChildren(updates)
-    }
-
-    private fun handleAdsWaterfall() {
-        val uid = auth.currentUser?.uid ?: return
-        if (rewardedAd != null) {
-            rewardedAd?.show(requireActivity()) { updateAdReward(uid) }
-        } else {
-            showUnityAd(uid)
-        }
-    }
-
-    private fun updateAdReward(uid: String) {
-        db.child("users").child(uid).runTransaction(object : Transaction.Handler {
-            override fun doTransaction(mutableData: MutableData): Transaction.Result {
-                val balance = mutableData.child("balance").getValue(Double::class.java) ?: 0.0
-                val adCycle = mutableData.child("adCycle").getValue(Int::class.java) ?: 0
-                
-                // Tightened: Fixed 0.02 Reward
-                mutableData.child("balance").value = balance + 0.02
-                mutableData.child("adCycle").value = if (adCycle >= 35) 1 else adCycle + 1
-                return Transaction.success(mutableData)
-            }
-            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) { if (isAdded) loadAd() }
-        })
     }
 
     private fun showSpinDialog() {
@@ -181,30 +122,83 @@ class DashboardFragment : Fragment() {
                 ?.rotationBy(targetRotation)
                 ?.setDuration(5000)
                 ?.withEndAction {
-                    val prize = when(sectorIndex) {
-                        2, 5 -> 0.50
-                        3, 7, 13 -> 0.10
-                        4, 6 -> 0.20
-                        8, 11, 12 -> 0.05
-                        9, 10, 15 -> 0.01
-                        else -> 0.0 
-                    }
-                    if (prize > 0) updateBalanceOnly(auth.currentUser?.uid ?: "", prize)
+                    val prizes = listOf(0.0, 0.0, 0.50, 0.10, 0.20, 0.50, 0.20, 0.10, 0.05, 0.01, 0.01, 0.05, 0.05, 0.10, 0.0, 0.10)
+                    val win = prizes[sectorIndex]
+                    
+                    updateUserBalance(win, "lastSpin")
+                    if (win > 0) Toast.makeText(context, "You won KES $win!", Toast.LENGTH_SHORT).show()
                     dialog.dismiss()
                 }?.start()
         }
         dialog.show()
     }
 
-    private fun updateBalanceOnly(uid: String, amount: Double) {
-        db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
-            override fun doTransaction(data: MutableData): Transaction.Result {
-                val current = data.getValue(Double::class.java) ?: 0.0
-                data.value = current + amount
-                return Transaction.success(data)
+    private fun showScratchDialog() {
+        val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_scratch_card, null)
+        builder.setView(dialogView)
+        val dialog = builder.create()
+
+        val btnClaim = dialogView.findViewById<Button>(R.id.btnClaimScratch)
+        val tvResult = dialogView.findViewById<TextView>(R.id.tvScratchResult)
+        val scratchOverlay = dialogView.findViewById<View>(R.id.scratchOverlay)
+
+        val prize = 0.05
+        tvResult?.text = "KES $prize"
+
+        scratchOverlay?.setOnTouchListener { v, event ->
+            if (event.action == android.view.MotionEvent.ACTION_MOVE) {
+                v.alpha -= 0.05f
+                if (v.alpha <= 0.1f) {
+                    v.visibility = View.GONE
+                    btnClaim?.visibility = View.VISIBLE
+                }
             }
-            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) {}
-        })
+            true
+        }
+
+        btnClaim?.setOnClickListener {
+            updateUserBalance(prize, "lastScratch")
+            dialog.dismiss()
+        }
+        dialog.show()
+    }
+
+    private fun updateUserBalance(amount: Double, timestampNode: String) {
+        val uid = auth.currentUser?.uid ?: return
+        val updates = hashMapOf<String, Any>(
+            "balance" to ServerValue.increment(amount),
+            timestampNode to ServerValue.TIMESTAMP
+        )
+        db.child("users").child(uid).updateChildren(updates)
+    }
+
+    private fun handleAdsWaterfall() {
+        val uid = auth.currentUser?.uid ?: return
+        if (rewardedAd != null) {
+            rewardedAd?.show(requireActivity()) { updateAdReward(uid) }
+        } else {
+            showUnityAd(uid)
+        }
+    }
+
+    private fun updateAdReward(uid: String) {
+        val userRef = db.child("users").child(uid)
+        userRef.child("adCycle").get().addOnSuccessListener { snapshot ->
+            val currentCycle = snapshot.getValue(Int::class.java) ?: 0
+            val nextCycle = if (currentCycle >= 35) 1 else currentCycle + 1
+            
+            val updates = hashMapOf<String, Any>(
+                "balance" to ServerValue.increment(0.02),
+                "adCycle" to nextCycle
+            )
+            userRef.updateChildren(updates).addOnCompleteListener { task ->
+                if (task.isSuccessful && isAdded) {
+                    Toast.makeText(context, "KES 0.02 Added!", Toast.LENGTH_SHORT).show()
+                    loadAd()
+                }
+            }
+        }
     }
 
     private fun findBottomNav(view: View?): BottomNavigationView? {
