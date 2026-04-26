@@ -1,6 +1,7 @@
 package co.ke.magictortoise
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -38,11 +39,11 @@ class MarketFragment : Fragment() {
             myUsername = it.child("username").value?.toString()
         }
 
-        // 2. Tournament Logic (25% House Cut -> 75% to Jackpot)
+        // 2. Tournament Logic (25% House Cut)
         db.child("tournaments").child("active").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val count = snapshot.child("players").childrenCount.toInt()
-                val netJackpot = (count * 10.0) * 0.75 
+                val netJackpot = (count * 10.0) * 0.75
                 currentJackpotDisplay = String.format("%.2f", netJackpot)
                 tvPlayers.text = "Participants: $count"
                 tvJackpot.text = "WIN KES $currentJackpotDisplay"
@@ -50,7 +51,7 @@ class MarketFragment : Fragment() {
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // 3. P2P Lobby Logic (Displays Math, Tap, and Trivia challenges)
+        // 3. P2P Lobby Logic
         db.child("p2p_lobby").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 p2pContainer.removeAllViews()
@@ -66,7 +67,6 @@ class MarketFragment : Fragment() {
                     
                     battleView.findViewById<Button>(R.id.btnJoinBattle).setOnClickListener {
                         if (battleUid != uid && checkProfile()) {
-                            // TRIGGERS JOIN POPUP based on Game Type
                             showJoinBattleGateway(battleUid, stake.toDouble(), gameType)
                         }
                     }
@@ -76,15 +76,8 @@ class MarketFragment : Fragment() {
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // --- BUTTON TRIGGERS ---
-        
-        // Sync: Opens Selection for Tiers (2, 4, 6, 10 players)
         btnSync.setOnClickListener { if (checkProfile()) showSyncTierSelection(uid) }
-
-        // Tournament: Opens the Full Screen Pop-up
         btnTournament.setOnClickListener { if (checkProfile()) showTournamentFullScreen() }
-
-        // Create: Opens the existing Dialog
         btnCreateBattle.setOnClickListener { if (checkProfile()) showCreateBattleDialog(uid) }
     }
 
@@ -96,7 +89,6 @@ class MarketFragment : Fragment() {
         return true
     }
 
-    // --- FULL SCREEN TOURNAMENT POP-UP ---
     private fun showTournamentFullScreen() {
         val dialogView = layoutInflater.inflate(R.layout.layout_tournament_gateway, null)
         val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
@@ -110,7 +102,6 @@ class MarketFragment : Fragment() {
         dialog.show()
     }
 
-    // --- SYNC TIER SELECTION ---
     private fun showSyncTierSelection(uid: String) {
         val stakes = arrayOf("20/-", "50/-", "100/-", "250/-")
         val values = doubleArrayOf(20.0, 50.0, 100.0, 250.0)
@@ -128,10 +119,8 @@ class MarketFragment : Fragment() {
         }.show()
     }
 
-    // --- P2P JOIN POPUP (Triggers based on game type) ---
     private fun showJoinBattleGateway(creatorUid: String, stake: Double, game: String) {
-        // This opens a full-screen gateway specifically for joining a challenge
-        val dialogView = layoutInflater.inflate(R.layout.layout_tournament_gateway, null) // Reusing the style
+        val dialogView = layoutInflater.inflate(R.layout.layout_tournament_gateway, null)
         val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
             .setView(dialogView).create()
 
@@ -150,7 +139,6 @@ class MarketFragment : Fragment() {
         val dialog = AlertDialog.Builder(context).setView(dialogView).create()
         val etStake = dialogView.findViewById<EditText>(R.id.etStakeAmount)
         val spinner = dialogView.findViewById<Spinner>(R.id.spinnerGameType)
-
         val games = arrayOf("Math Blitz", "Tap Tortoise", "Trivia Duel")
         spinner.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, games)
 
@@ -164,7 +152,7 @@ class MarketFragment : Fragment() {
         dialog.show()
     }
 
-    private fun handleTransaction(uid: String, amount: Double, type: String, extraData: String = "") {
+    private fun handleTransaction(uid: String, amount: Double, type: String, extra: String = "") {
         db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
             override fun doTransaction(mutableData: MutableData): Transaction.Result {
                 val bal = mutableData.getValue(Double::class.java) ?: 0.0
@@ -172,14 +160,23 @@ class MarketFragment : Fragment() {
                 mutableData.value = bal - amount
                 return Transaction.success(mutableData)
             }
-            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                if (committed) {
+            override fun onComplete(err: DatabaseError?, comm: Boolean, snap: DataSnapshot?) {
+                if (comm) {
                     when (type) {
-                        "sync" -> db.child("sync_active").child(extraData).child("participants").child(uid).child("name").setValue(myUsername)
-                        "tournament" -> db.child("tournaments").child("active").child("players").child(uid).setValue(true)
+                        "tournament" -> {
+                            db.child("tournaments").child("active").child("players").child(uid).setValue(true)
+                            (activity as? MainActivity)?.showTournamentOverlay(currentJackpotDisplay)
+                        }
+                        "sync" -> {
+                            db.child("sync_active").child(extra).child("participants").child(uid).child("name").setValue(myUsername)
+                            startActivity(Intent(context, SyncBattleActivity::class.java).putExtra("ROOM_ID", extra))
+                        }
                         "p2p_create" -> {
-                            val battle = mapOf("name" to myUsername, "stake" to amount, "game" to extraData)
+                            val battle = mapOf("name" to myUsername, "stake" to amount, "game" to extra)
                             db.child("p2p_lobby").child(uid).setValue(battle)
+                        }
+                        "p2p_join" -> {
+                            startActivity(Intent(context, BattleFieldActivity::class.java).putExtra("BATTLE_ID", extra))
                         }
                     }
                 }
