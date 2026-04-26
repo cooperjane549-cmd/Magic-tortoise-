@@ -1,3 +1,4 @@
+
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -27,8 +28,7 @@
                     android:layout_height="wrap_content"
                     android:text="GRAND TOURNAMENT"
                     android:textColor="#FFD700"
-                    android:textStyle="bold"
-                    android:textSize="14sp" />
+                    android:textStyle="bold" />
                 <TextView
                     android:id="@+id/tvTournamentJackpot"
                     android:layout_width="wrap_content"
@@ -36,16 +36,20 @@
                     android:text="WIN KES 0.00"
                     android:textColor="#FFFFFF"
                     android:textSize="32sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="5dp"/>
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tvTournamentPlayers"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Participants: 0"
+                    android:textColor="#888" />
                 <Button
                     android:id="@+id/btnEnterTournament"
                     android:layout_width="match_parent"
                     android:layout_height="55dp"
-                    android:text="OPEN TOURNAMENT GATE"
+                    android:text="OPEN GATEWAY (10/-)"
                     android:backgroundTint="#FFD700"
                     android:textColor="#000000"
-                    android:textStyle="bold"
                     android:layout_marginTop="15dp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -53,7 +57,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="SYNC ARENA (2-10 PLAYERS)"
+            android:text="MULTIPLAYER SYNC POOLS"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
             android:layout_marginBottom="10dp"/>
@@ -71,9 +75,8 @@
                     android:id="@+id/btnSyncNow"
                     android:layout_width="match_parent"
                     android:layout_height="55dp"
-                    android:text="SELECT SYNC TIER"
-                    android:backgroundTint="#FF0000"
-                    android:textStyle="bold" />
+                    android:text="CHOOSE STAKE &amp; SIZE"
+                    android:backgroundTint="#FF0000" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -101,8 +104,6 @@
             android:id="@+id/p2pContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="10dp" />
-
+            android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>
