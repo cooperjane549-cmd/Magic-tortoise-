@@ -17,13 +17,11 @@
             app:cardCornerRadius="15dp"
             app:cardBackgroundColor="#1A1A1A"
             android:layout_marginBottom="20dp">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="20dp">
-
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -31,7 +29,6 @@
                     android:textColor="#FFD700"
                     android:textStyle="bold"
                     android:textSize="14sp" />
-
                 <TextView
                     android:id="@+id/tvTournamentJackpot"
                     android:layout_width="wrap_content"
@@ -41,19 +38,11 @@
                     android:textSize="32sp"
                     android:textStyle="bold"
                     android:layout_marginTop="5dp"/>
-
-                <TextView
-                    android:id="@+id/tvTournamentPlayers"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Participants: 0"
-                    android:textColor="#888" />
-
                 <Button
                     android:id="@+id/btnEnterTournament"
                     android:layout_width="match_parent"
                     android:layout_height="55dp"
-                    android:text="ENTER NOW (10/-)"
+                    android:text="OPEN TOURNAMENT GATE"
                     android:backgroundTint="#FFD700"
                     android:textColor="#000000"
                     android:textStyle="bold"
@@ -64,71 +53,45 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="QUICK SYNC (6-PLAYER POOL)"
+            android:text="SYNC ARENA (2-10 PLAYERS)"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
             android:layout_marginBottom="10dp"/>
-
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardCornerRadius="12dp"
             app:cardBackgroundColor="#121212">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="15dp">
-
-                <TextView
-                    android:id="@+id/tvSyncUserList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Waiting for participants..."
-                    android:textColor="#00FF00"
-                    android:textSize="12sp"
-                    android:layout_marginBottom="12dp"/>
-
-                <ProgressBar
-                    android:id="@+id/syncProgressBar"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="12dp"
-                    android:max="6"
-                    android:progressTint="#FF0000" />
-
                 <Button
                     android:id="@+id/btnSyncNow"
                     android:layout_width="match_parent"
                     android:layout_height="55dp"
-                    android:text="SYNC NOW (20/-)"
+                    android:text="SELECT SYNC TIER"
                     android:backgroundTint="#FF0000"
-                    android:textStyle="bold"
-                    android:layout_marginTop="15dp"/>
+                    android:textStyle="bold" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="25dp"
-            android:layout_marginBottom="10dp">
-
+            android:layout_marginTop="25dp">
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="P2P BATTLE LOBBY"
                 android:textColor="#FFFFFF"
-                android:textStyle="bold"
-                android:layout_centerVertical="true"/>
-
+                android:textStyle="bold"/>
             <Button
                 android:id="@+id/btnCreateBattle"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
                 android:text="+ CREATE"
-                android:textSize="12sp"
                 android:layout_alignParentEnd="true"
                 android:backgroundTint="#333"
                 android:textColor="#FFD700" />
@@ -138,7 +101,8 @@
             android:id="@+id/p2pContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:orientation="vertical"
+            android:layout_marginTop="10dp" />
 
     </LinearLayout>
 </ScrollView>
