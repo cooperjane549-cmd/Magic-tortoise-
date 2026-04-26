@@ -1,5 +1,6 @@
 package co.ke.magictortoise
 
+import android.graphics.Color
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.View
@@ -7,6 +8,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import kotlin.random.Random
 
 class BattlefieldActivity : AppCompatActivity() {
 
@@ -19,15 +21,27 @@ class BattlefieldActivity : AppCompatActivity() {
     private var myScore = 0
     private var opponentScore = 0
     private var isGameOver = false
+    private var mathAnswer = 0
 
     // UI Elements
     private lateinit var tvTimer: TextView
     private lateinit var pbMyProgress: ProgressBar
     private lateinit var pbOpponentProgress: ProgressBar
     private lateinit var gameStage: FrameLayout
+    private lateinit var tvStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 1. SET FULL SCREEN MODE
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        supportActionBar?.hide()
+
         setContentView(R.layout.activity_battlefield)
 
         auth = FirebaseAuth.getInstance()
@@ -49,20 +63,21 @@ class BattlefieldActivity : AppCompatActivity() {
         pbMyProgress = findViewById(R.id.pbMyProgress)
         pbOpponentProgress = findViewById(R.id.pbOpponentProgress)
         gameStage = findViewById(R.id.gameStage)
+        tvStatus = findViewById(R.id.tvWaitingMessage)
+        
+        // Max progress for 60 seconds of tapping/math
+        pbMyProgress.max = 100 
+        pbOpponentProgress.max = 100
     }
 
-    // 1. SYNC LOGIC: Listen for Opponent's score in real-time
+    // 2. SYNC LOGIC: Real-time Score Tracking
     private fun setupSync() {
-        val uid = auth.currentUser?.uid ?: return
         val opponentKey = if (isCreator) "player2_score" else "player1_score"
-        val myKey = if (isCreator) "player1_score" else "player2_score"
 
         roomId?.let { id ->
             db.child("p2p_lobby").child(id).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (isGameOver) return
-
-                    // Update Opponent's Progress Bar
                     opponentScore = snapshot.child(opponentKey).getValue(Int::class.java) ?: 0
                     pbOpponentProgress.progress = opponentScore
                     findViewById<TextView>(R.id.tvOpponentName).text = "OPPONENT: $opponentScore"
@@ -72,13 +87,13 @@ class BattlefieldActivity : AppCompatActivity() {
         }
     }
 
-    // 2. TIMER LOGIC: The 60-second limit
+    // 3. TIMER LOGIC: 60 Seconds
     private fun startCountdown() {
         object : CountDownTimer(60000, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val seconds = millisUntilFinished / 1000
                 tvTimer.text = String.format("00:%02d", seconds)
-                if (seconds <= 10) tvTimer.setTextColor(android.graphics.Color.RED)
+                if (seconds <= 10) tvTimer.setTextColor(Color.RED)
             }
 
             override fun onFinish() {
@@ -88,7 +103,7 @@ class BattlefieldActivity : AppCompatActivity() {
         }.start()
     }
 
-    // 3. GAME LOADING: Decide which furniture to put in the house
+    // 4. GAME LOADING: Load the sub-layouts
     private fun loadGameLayout() {
         val inflater = layoutInflater
         when (gameType) {
@@ -99,21 +114,61 @@ class BattlefieldActivity : AppCompatActivity() {
             }
             "Tap Tortoise" -> {
                 val tapView = inflater.inflate(R.layout.game_tap_tortoise, gameStage, false)
-                gameStage.addView(mathView) // Use tapView here
+                gameStage.addView(tapView) 
                 setupTapLogic(tapView)
             }
-            // Add Trivia logic similarly later
+            "Trivia Duel" -> {
+                // Future Trivia Logic
+            }
         }
     }
 
-    // Example Math Increment
+    // --- GAME LOGIC: TAP TORTOISE ---
+    private fun setupTapLogic(view: View) {
+        val ivTortoise = view.findViewById<ImageView>(R.id.ivTapTortoise)
+        ivTortoise.setOnClickListener {
+            if (!isGameOver) {
+                it.animate().scaleX(0.9f).scaleY(0.9f).setDuration(50).withEndAction {
+                    it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(50).start()
+                }.start()
+                onPointScored()
+            }
+        }
+    }
+
+    // --- GAME LOGIC: MATH BLITZ ---
+    private fun setupMathLogic(view: View) {
+        val tvQuestion = view.findViewById<TextView>(R.id.tvMathProblem)
+        val etAnswer = view.findViewById<EditText>(R.id.etMathAnswer)
+        val btnSubmit = view.findViewById<Button>(R.id.btnSubmitAnswer)
+
+        fun generateProblem() {
+            val a = Random.nextInt(1, 20)
+            val b = Random.nextInt(1, 20)
+            mathAnswer = a + b
+            tvQuestion.text = "$a + $b = ?"
+            etAnswer.text.clear()
+        }
+
+        generateProblem()
+
+        btnSubmit.setOnClickListener {
+            val ans = etAnswer.text.toString().toIntOrNull()
+            if (ans == mathAnswer) {
+                onPointScored()
+                generateProblem()
+            } else {
+                Toast.makeText(this, "Wrong!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun onPointScored() {
         if (isGameOver) return
         myScore++
         pbMyProgress.progress = myScore
         findViewById<TextView>(R.id.tvMyName).text = "YOU: $myScore"
 
-        // Update Firebase so opponent sees your progress
         val myKey = if (isCreator) "player1_score" else "player2_score"
         roomId?.let { id ->
             db.child("p2p_lobby").child(id).child(myKey).setValue(myScore)
@@ -123,7 +178,19 @@ class BattlefieldActivity : AppCompatActivity() {
     private fun endGame() {
         isGameOver = true
         gameStage.visibility = View.GONE
-        Toast.makeText(this, "Time Up! Final Score: $myScore", Toast.LENGTH_LONG).show()
-        // Logic for checking winner and awarding stake goes here
+        tvStatus.visibility = View.VISIBLE
+
+        if (myScore > opponentScore) {
+            tvStatus.text = "VICTORY! YOU WON KES"
+            tvStatus.setTextColor(Color.GREEN)
+        } else if (myScore < opponentScore) {
+            tvStatus.text = "DEFEAT! BETTER LUCK NEXT TIME"
+            tvStatus.setTextColor(Color.RED)
+        } else {
+            tvStatus.text = "DRAW! STAKES RETURNED"
+            tvStatus.setTextColor(Color.YELLOW)
+        }
+        
+        Toast.makeText(this, "Match Ended. Score: $myScore", Toast.LENGTH_LONG).show()
     }
 }
