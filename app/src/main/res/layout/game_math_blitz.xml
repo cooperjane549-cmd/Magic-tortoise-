@@ -1,0 +1,30 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/tvMathProblem"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="25 + 14 = ?"
+        android:textColor="#FFF"
+        android:textSize="36sp" />
+
+    <EditText
+        android:id="@+id/etMathAnswer"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:hint="?"
+        android:inputType="number"
+        android:textAlignment="center"
+        android:textColor="#FFF" />
+
+    <Button
+        android:id="@+id/btnSubmitAnswer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SUBMIT"
+        android:backgroundTint="#4CAF50" />
+</LinearLayout>
