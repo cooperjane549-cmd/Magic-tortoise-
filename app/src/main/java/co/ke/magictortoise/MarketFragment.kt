@@ -34,12 +34,10 @@ class MarketFragment : Fragment() {
 
         val uid = auth.currentUser?.uid ?: return
 
-        // 1. Fetch Profile
         db.child("users").child(uid).get().addOnSuccessListener {
             myUsername = it.child("username").value?.toString()
         }
 
-        // 2. Tournament Logic (25% House Cut)
         db.child("tournaments").child("active").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val count = snapshot.child("players").childrenCount.toInt()
@@ -51,7 +49,6 @@ class MarketFragment : Fragment() {
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // 3. P2P Lobby Logic
         db.child("p2p_lobby").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 p2pContainer.removeAllViews()
@@ -90,7 +87,8 @@ class MarketFragment : Fragment() {
     }
 
     private fun showTournamentFullScreen() {
-        val dialogView = layoutInflater.inflate(R.layout.layout_tournament_gateway, null)
+        val inflater = LayoutInflater.from(requireContext())
+        val dialogView = inflater.inflate(R.layout.layout_tournament_gateway, null)
         val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
             .setView(dialogView).create()
         
@@ -120,17 +118,19 @@ class MarketFragment : Fragment() {
     }
 
     private fun showJoinBattleGateway(creatorUid: String, stake: Double, game: String) {
-        val dialogView = layoutInflater.inflate(R.layout.layout_tournament_gateway, null)
+        val inflater = LayoutInflater.from(requireContext())
+        val dialogView = inflater.inflate(R.layout.layout_tournament_gateway, null)
         val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
             .setView(dialogView).create()
 
-        dialogView.findViewById<TextView>(R.id.tvGatewayTitle).text = "JOIN $game"
         dialogView.findViewById<Button>(R.id.btnJoinTournamentFinal).text = "JOIN FOR $stake/-"
         
         dialogView.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
-            handleTransaction(auth.uid!!, stake, "p2p_join", creatorUid)
+            // Joiners need the creator's UID as ROOM_ID and the Game Type
+            handleTransaction(auth.uid!!, stake, "p2p_join", "$creatorUid|$game")
             dialog.dismiss()
         }
+        dialogView.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         dialog.show()
     }
 
@@ -172,11 +172,21 @@ class MarketFragment : Fragment() {
                             startActivity(Intent(context, SyncBattleActivity::class.java).putExtra("ROOM_ID", extra))
                         }
                         "p2p_create" -> {
-                            val battle = mapOf("name" to myUsername, "stake" to amount, "game" to extra)
+                            val battle = mapOf("name" to myUsername, "stake" to amount, "game" to extra, "player1_score" to 0, "player2_score" to 0)
                             db.child("p2p_lobby").child(uid).setValue(battle)
+                            val intent = Intent(context, BattlefieldActivity::class.java)
+                            intent.putExtra("ROOM_ID", uid)
+                            intent.putExtra("GAME_TYPE", extra)
+                            intent.putExtra("IS_CREATOR", true)
+                            startActivity(intent)
                         }
                         "p2p_join" -> {
-                            startActivity(Intent(context, BattleFieldActivity::class.java).putExtra("BATTLE_ID", extra))
+                            val parts = extra.split("|")
+                            val intent = Intent(context, BattlefieldActivity::class.java)
+                            intent.putExtra("ROOM_ID", parts[0])
+                            intent.putExtra("GAME_TYPE", parts[1])
+                            intent.putExtra("IS_CREATOR", false)
+                            startActivity(intent)
                         }
                     }
                 }
