@@ -29,5 +29,11 @@
             android:name=".MainActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".SyncBattleActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
     </application>
 </manifest>
