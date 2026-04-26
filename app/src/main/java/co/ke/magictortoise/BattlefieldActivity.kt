@@ -11,7 +11,16 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import org.json.JSONArray
 import kotlin.random.Random
+
+// Data class to hold our 500 questions
+data class Question(
+    val id: Int,
+    val question: String,
+    val options: List<String>,
+    val answer: String
+)
 
 class BattlefieldActivity : AppCompatActivity() {
 
@@ -26,6 +35,10 @@ class BattlefieldActivity : AppCompatActivity() {
     private var isGameOver = false
     private var mathAnswer = 0
 
+    // Trivia Variables
+    private var triviaList = mutableListOf<Question>()
+    private var currentQuestionIndex = 0
+
     // UI Elements
     private lateinit var tvTimer: TextView
     private lateinit var pbMyProgress: ProgressBar
@@ -36,7 +49,7 @@ class BattlefieldActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 1. STICKY FULL SCREEN MODE (Immersive)
+        // 1. STICKY FULL SCREEN MODE
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -67,14 +80,12 @@ class BattlefieldActivity : AppCompatActivity() {
         gameStage = findViewById(R.id.gameStage)
         tvStatus = findViewById(R.id.tvWaitingMessage)
         
-        // Target score for the progress bars
         pbMyProgress.max = 100 
         pbOpponentProgress.max = 100
     }
 
     private fun setupSync() {
         val opponentKey = if (isCreator) "player2_score" else "player1_score"
-
         roomId?.let { id ->
             db.child("p2p_lobby").child(id).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -95,7 +106,6 @@ class BattlefieldActivity : AppCompatActivity() {
                 tvTimer.text = String.format("00:%02d", seconds)
                 if (seconds <= 10) tvTimer.setTextColor(Color.RED)
             }
-
             override fun onFinish() {
                 tvTimer.text = "00:00"
                 endGame()
@@ -119,16 +129,15 @@ class BattlefieldActivity : AppCompatActivity() {
             "Trivia Duel" -> {
                 val triviaView = inflater.inflate(R.layout.game_trivia_duel, gameStage, false)
                 gameStage.addView(triviaView)
-                // We will link the 500 questions logic here next
+                loadTriviaFromAssets()
+                showNextTriviaQuestion(triviaView)
             }
         }
     }
 
-    // --- GAME LOGIC: TAP TORTOISE (WITH BREATHING & LIGHTNING) ---
+    // --- GAME LOGIC: TAP TORTOISE ---
     private fun setupTapLogic(view: View) {
         val ivTortoise = view.findViewById<ImageView>(R.id.ivTapTortoise)
-        
-        // Constant Breathing Animation
         val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.05f)
         val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.05f)
         ObjectAnimator.ofPropertyValuesHolder(ivTortoise, scaleX, scaleY).apply {
@@ -137,17 +146,13 @@ class BattlefieldActivity : AppCompatActivity() {
             repeatMode = ValueAnimator.REVERSE
             start()
         }
-
         ivTortoise.setOnClickListener {
             if (!isGameOver) {
-                // Electric Flash & Pulse
                 it.animate().scaleX(1.1f).scaleY(1.1f).setDuration(50).withEndAction {
                     it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(50).start()
                 }.start()
-                
                 it.alpha = 0.6f
                 it.postDelayed({ it.alpha = 1.0f }, 50)
-
                 onPointScored()
             }
         }
@@ -158,7 +163,6 @@ class BattlefieldActivity : AppCompatActivity() {
         val tvQuestion = view.findViewById<TextView>(R.id.tvMathProblem)
         val etAnswer = view.findViewById<EditText>(R.id.etMathAnswer)
         val btnSubmit = view.findViewById<Button>(R.id.btnSubmitAnswer)
-
         fun generateProblem() {
             val a = Random.nextInt(5, 30)
             val b = Random.nextInt(5, 30)
@@ -166,9 +170,7 @@ class BattlefieldActivity : AppCompatActivity() {
             tvQuestion.text = "$a + $b = ?"
             etAnswer.text.clear()
         }
-
         generateProblem()
-
         btnSubmit.setOnClickListener {
             val ans = etAnswer.text.toString().toIntOrNull()
             if (ans == mathAnswer) {
@@ -180,23 +182,63 @@ class BattlefieldActivity : AppCompatActivity() {
         }
     }
 
+    // --- GAME LOGIC: TRIVIA DUEL ---
+    private fun loadTriviaFromAssets() {
+        try {
+            val jsonString = assets.open("questions.json").bufferedReader().use { it.readText() }
+            val jsonArray = JSONArray(jsonString)
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                val opts = obj.getJSONArray("options")
+                val optionsList = mutableListOf<String>()
+                for (j in 0 until opts.length()) optionsList.add(opts.getString(j))
+                triviaList.add(Question(obj.getInt("id"), obj.getString("question"), optionsList, obj.getString("answer")))
+            }
+            triviaList.shuffle()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error loading questions", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showNextTriviaQuestion(view: View) {
+        if (isGameOver || triviaList.isEmpty()) return
+        if (currentQuestionIndex >= triviaList.size) currentQuestionIndex = 0
+        
+        val currentQ = triviaList[currentQuestionIndex]
+        view.findViewById<TextView>(R.id.tvTriviaQuestion).text = currentQ.question
+        
+        val buttons = listOf<Button>(
+            view.findViewById(R.id.btnOpt1), view.findViewById(R.id.btnOpt2),
+            view.findViewById(R.id.btnOpt3), view.findViewById(R.id.btnOpt4)
+        )
+
+        buttons.forEachIndexed { index, button ->
+            button.text = currentQ.options[index]
+            button.setOnClickListener {
+                if (button.text == currentQ.answer) {
+                    onPointScored()
+                    currentQuestionIndex++
+                    showNextTriviaQuestion(view)
+                } else {
+                    Toast.makeText(this, "Wrong!", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     private fun onPointScored() {
         if (isGameOver) return
         myScore++
         pbMyProgress.progress = myScore
         findViewById<TextView>(R.id.tvMyName).text = "YOU: $myScore"
-
         val myKey = if (isCreator) "player1_score" else "player2_score"
-        roomId?.let { id ->
-            db.child("p2p_lobby").child(id).child(myKey).setValue(myScore)
-        }
+        roomId?.let { id -> db.child("p2p_lobby").child(id).child(myKey).setValue(myScore) }
     }
 
     private fun endGame() {
         isGameOver = true
         gameStage.visibility = View.GONE
         tvStatus.visibility = View.VISIBLE
-
         when {
             myScore > opponentScore -> {
                 tvStatus.text = "VICTORY! 🏆\nYOU WON THE STAKE"
