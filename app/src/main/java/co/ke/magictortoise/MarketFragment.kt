@@ -34,21 +34,24 @@ class MarketFragment : Fragment() {
 
         val uid = auth.currentUser?.uid ?: return
 
+        // Fetch User Profile
         db.child("users").child(uid).get().addOnSuccessListener {
             myUsername = it.child("username").value?.toString()
         }
 
+        // Live Tournament Updates
         db.child("tournaments").child("active").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val count = snapshot.child("players").childrenCount.toInt()
                 val netJackpot = (count * 10.0) * 0.75
                 currentJackpotDisplay = String.format("%.2f", netJackpot)
-                tvPlayers.text = "Participants: $count"
-                tvJackpot.text = "WIN KES $currentJackpotDisplay"
+                tvPlayers?.text = "Participants: $count"
+                tvJackpot?.text = "WIN KES $currentJackpotDisplay"
             }
             override fun onCancelled(error: DatabaseError) {}
         })
 
+        // P2P Lobby Updates
         db.child("p2p_lobby").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 p2pContainer.removeAllViews()
@@ -88,9 +91,10 @@ class MarketFragment : Fragment() {
 
     private fun showTournamentFullScreen() {
         val inflater = LayoutInflater.from(requireContext())
-        val dialogView = inflater.inflate(R.layout.layout_tournament_gateway, null)
+        val dialogView = inflater.inflate(R.layout.layout_tournament_overlay, null)
         val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-            .setView(dialogView).create()
+            .setView(dialogView) 
+            .create()
         
         dialogView.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         dialogView.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
@@ -119,14 +123,13 @@ class MarketFragment : Fragment() {
 
     private fun showJoinBattleGateway(creatorUid: String, stake: Double, game: String) {
         val inflater = LayoutInflater.from(requireContext())
-        val dialogView = inflater.inflate(R.layout.layout_tournament_gateway, null)
+        val dialogView = inflater.inflate(R.layout.layout_tournament_overlay, null)
         val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-            .setView(dialogView).create()
+            .setView(dialogView)
+            .create()
 
         dialogView.findViewById<Button>(R.id.btnJoinTournamentFinal).text = "JOIN FOR $stake/-"
-        
         dialogView.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
-            // Joiners need the creator's UID as ROOM_ID and the Game Type
             handleTransaction(auth.uid!!, stake, "p2p_join", "$creatorUid|$game")
             dialog.dismiss()
         }
