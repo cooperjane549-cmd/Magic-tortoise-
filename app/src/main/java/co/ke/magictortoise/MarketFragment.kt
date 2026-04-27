@@ -25,10 +25,8 @@ class MarketFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // GUARD: Ensure user is logged in
         val currentUser = auth.currentUser
         if (currentUser == null) {
-            Toast.makeText(context, "Please log in first", Toast.LENGTH_SHORT).show()
             return
         }
         val uid = currentUser.uid
@@ -90,16 +88,18 @@ class MarketFragment : Fragment() {
 
     private fun checkProfile(): Boolean {
         if (myUsername.isNullOrEmpty()) {
-            Toast.makeText(context, "Update your username in Support first!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Update username in Support first", Toast.LENGTH_SHORT).show()
             return false
         }
         return true
     }
 
     private fun showTournamentFullScreen() {
-        val dialogView = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
+        val inflater = LayoutInflater.from(requireContext())
+        val dialogView = inflater.inflate(R.layout.layout_tournament_overlay, null)
         val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-            .setView(dialogView).create()
+            .setView(dialogView)
+            .create()
         
         dialogView.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         dialogView.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
@@ -127,9 +127,11 @@ class MarketFragment : Fragment() {
     }
 
     private fun showJoinBattleGateway(creatorUid: String, stake: Double, game: String) {
-        val dialogView = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
+        val inflater = LayoutInflater.from(requireContext())
+        val dialogView = inflater.inflate(R.layout.layout_tournament_overlay, null)
         val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-            .setView(dialogView).create()
+            .setView(dialogView)
+            .create()
 
         dialogView.findViewById<Button>(R.id.btnJoinTournamentFinal).text = "JOIN FOR $stake/-"
         dialogView.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
@@ -141,8 +143,14 @@ class MarketFragment : Fragment() {
     }
 
     private fun showCreateBattleDialog(uid: String) {
-        val dialogView = layoutInflater.inflate(R.id.dialog_create_battle, null) // Corrected R.id to R.layout
-        val dialog = AlertDialog.Builder(context).setView(dialogView).create()
+        // FIXED: Using R.layout instead of R.id
+        val inflater = LayoutInflater.from(requireContext())
+        val dialogView = inflater.inflate(R.layout.dialog_create_battle, null)
+        
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .create()
+
         val etStake = dialogView.findViewById<EditText>(R.id.etStakeAmount)
         val spinner = dialogView.findViewById<Spinner>(R.id.spinnerGameType)
         val games = arrayOf("Math Blitz", "Tap Tortoise", "Trivia Duel")
@@ -153,6 +161,8 @@ class MarketFragment : Fragment() {
             if (amount >= 20.0) {
                 handleTransaction(uid, amount, "p2p_create", spinner.selectedItem.toString())
                 dialog.dismiss()
+            } else {
+                Toast.makeText(context, "Minimum stake is 20/-", Toast.LENGTH_SHORT).show()
             }
         }
         dialog.show()
@@ -172,13 +182,11 @@ class MarketFragment : Fragment() {
                     when (type) {
                         "tournament" -> {
                             db.child("tournaments").child("active").child("players").child(uid).setValue(true)
-                            // Safe UI call to MainActivity
                             activity?.let {
                                 (it as? MainActivity)?.showTournamentOverlay(currentJackpotDisplay)
                             }
                         }
                         "sync" -> {
-                            // Write player name so SyncBattleActivity sees a participant
                             db.child("sync_active").child(extra).child("participants").child(uid).child("name").setValue(myUsername)
                             val intent = Intent(context, SyncBattleActivity::class.java)
                             intent.putExtra("ROOM_ID", extra)
@@ -203,7 +211,7 @@ class MarketFragment : Fragment() {
                         }
                     }
                 } else {
-                    Toast.makeText(context, "Transaction Failed: Insufficient Balance", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Insufficient Balance", Toast.LENGTH_SHORT).show()
                 }
             }
         })
