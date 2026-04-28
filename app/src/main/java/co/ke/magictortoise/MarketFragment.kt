@@ -46,7 +46,6 @@ class MarketFragment : Fragment() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!isAdded) return
                 val count = snapshot.child("players").childrenCount.toInt()
-                // Logic: (Total Entry Fees * 75%)
                 val calculatedJackpot = (count * 10.0) * 0.75
                 currentJackpotDisplay = String.format("%.2f", calculatedJackpot)
                 tvPlayers?.text = "Participants: $count"
@@ -87,14 +86,17 @@ class MarketFragment : Fragment() {
         return true
     }
 
+    // FIXED: Properly mapping Jackpot text to your XML IDs
     private fun showTournamentFullScreen() {
         val view = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
         val dialog = MaterialAlertDialogBuilder(requireContext(), android.R.style.Theme_NoTitleBar_Fullscreen)
             .setView(view).create()
         
-        // FIX: Ensuring the text reflects the LATEST jackpot value
-        val display = view.findViewById<TextView>(R.id.tvLiveQuestion)
-        display?.text = "GRAND TOURNAMENT\nJACKPOT: KES $currentJackpotDisplay"
+        // ID 'tvLiveQuestion' is the small grey label
+        view.findViewById<TextView>(R.id.tvLiveQuestion)?.text = "GRAND TOURNAMENT JACKPOT"
+
+        // ID 'tvTournamentJackpot' is the LARGE white amount
+        view.findViewById<TextView>(R.id.tvTournamentJackpot)?.text = "KES $currentJackpotDisplay"
 
         view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         view.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
@@ -104,14 +106,14 @@ class MarketFragment : Fragment() {
         dialog.show()
     }
 
+    // UPDATED: Better clarity when joining P2P Battles
     private fun showJoinBattleGateway(cUid: String, stake: Double, game: String) {
         val view = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
         val dialog = MaterialAlertDialogBuilder(requireContext(), android.R.style.Theme_NoTitleBar_Fullscreen)
             .setView(view).create()
         
-        // Customizing the shared overlay for P2P Joining
-        val display = view.findViewById<TextView>(R.id.tvLiveQuestion)
-        display?.text = "BATTLE ARENA\nGame: $game\nStake: KES $stake"
+        view.findViewById<TextView>(R.id.tvLiveQuestion)?.text = "BATTLE ARENA: $game"
+        view.findViewById<TextView>(R.id.tvTournamentJackpot)?.text = "STAKE: KES $stake"
         
         val actionBtn = view.findViewById<Button>(R.id.btnJoinTournamentFinal)
         actionBtn.text = "ACCEPT CHALLENGE"
@@ -152,7 +154,7 @@ class MarketFragment : Fragment() {
                 handleTransaction(uid, amt, "p2p_create", sp.selectedItem.toString())
                 dialog.dismiss()
             } else {
-                Toast.makeText(context, "Min stake is 20/-", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Minimum stake is 20/-", Toast.LENGTH_SHORT).show()
             }
         }
         dialog.show()
@@ -171,7 +173,7 @@ class MarketFragment : Fragment() {
                     when (type) {
                         "tournament" -> {
                             db.child("tournaments").child("active").child("players").child(uid).setValue(true)
-                            Toast.makeText(context, "Registration Successful!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Successfully Registered for Arena!", Toast.LENGTH_SHORT).show()
                         }
                         "sync" -> {
                             db.child("sync_active").child(extra).child("participants").child(uid).child("name").setValue(myUsername)
@@ -185,7 +187,7 @@ class MarketFragment : Fragment() {
                         }
                         "p2p_join" -> {
                             val p = extra.split("|")
-                            db.child("p2p_lobby").child(p[0]).removeValue() // Remove from lobby once joined
+                            db.child("p2p_lobby").child(p[0]).removeValue() 
                             startActivity(Intent(context, BattlefieldActivity::class.java).apply {
                                 putExtra("ROOM_ID", p[0]); putExtra("GAME_TYPE", p[1]); putExtra("IS_CREATOR", false)
                             })
