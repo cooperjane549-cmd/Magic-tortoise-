@@ -90,7 +90,6 @@ class MarketFragment : Fragment() {
         val dialog = MaterialAlertDialogBuilder(requireContext(), android.R.style.Theme_NoTitleBar_Fullscreen)
             .setView(view).create()
         
-        // FIXED: Using tvLiveQuestion if tvOverlayJackpot is missing in your XML
         view.findViewById<TextView>(R.id.tvLiveQuestion)?.text = "CURRENT JACKPOT\nKES $currentJackpotDisplay"
 
         view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
@@ -159,9 +158,12 @@ class MarketFragment : Fragment() {
                 if (comm) {
                     when (type) {
                         "tournament" -> {
+                            // Register the player for the upcoming timed event
                             db.child("tournaments").child("active").child("players").child(uid).setValue(true)
+                            
                             activity?.runOnUiThread {
                                 (activity as? MainActivity)?.showTournamentOverlay(currentJackpotDisplay)
+                                Toast.makeText(context, "Registered for next Arena event!", Toast.LENGTH_SHORT).show()
                             }
                         }
                         "sync" -> {
@@ -181,6 +183,8 @@ class MarketFragment : Fragment() {
                             })
                         }
                     }
+                } else {
+                    Toast.makeText(context, "Insufficient Balance", Toast.LENGTH_SHORT).show()
                 }
             }
         })
