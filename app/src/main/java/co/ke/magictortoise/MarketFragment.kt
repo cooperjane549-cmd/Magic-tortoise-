@@ -1,6 +1,7 @@
 package co.ke.magictortoise
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -38,7 +39,7 @@ class MarketFragment : Fragment() {
         val p2pContainer = view.findViewById<LinearLayout>(R.id.p2pContainer)
 
         btnSync.setOnClickListener { if (checkProfile()) showSyncTierSelection(uid) }
-        btnTournament.setOnClickListener { if (checkProfile()) showTournamentFullScreen() }
+        btnTournament.setOnClickListener { if (checkProfile()) showTournamentGateway() }
         btnCreateBattle.setOnClickListener { if (checkProfile()) showCreateBattleDialog(uid) }
 
         // Live Tournament Tracker
@@ -86,30 +87,46 @@ class MarketFragment : Fragment() {
         return true
     }
 
-    // FIXED: Properly mapping Jackpot text to your XML IDs
-    private fun showTournamentFullScreen() {
+    // THE GATEWAY: Checks if you've already joined before showing the dialog
+    private fun showTournamentGateway() {
         val view = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
-        val dialog = MaterialAlertDialogBuilder(requireContext(), android.R.style.Theme_NoTitleBar_Fullscreen)
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setView(view).create()
         
-        // ID 'tvLiveQuestion' is the small grey label
+        val uid = auth.currentUser?.uid ?: return
+        val btnAction = view.findViewById<Button>(R.id.btnJoinTournamentFinal)
+        
+        // Setup initial display inside the gateway pop-up
         view.findViewById<TextView>(R.id.tvLiveQuestion)?.text = "GRAND TOURNAMENT JACKPOT"
-
-        // ID 'tvTournamentJackpot' is the LARGE white amount
         view.findViewById<TextView>(R.id.tvTournamentJackpot)?.text = "KES $currentJackpotDisplay"
 
-        view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
-        view.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
-            handleTransaction(auth.uid!!, 10.0, "tournament")
-            dialog.dismiss()
+        // CHECK IF USER IS ALREADY IN FIREBASE
+        db.child("tournaments").child("active").child("players").child(uid).get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                // You are already Participant 1!
+                btnAction.text = "ENTER FULLSCREEN ARENA"
+                btnAction.setBackgroundColor(Color.parseColor("#4CAF50")) // Green for active
+                btnAction.setOnClickListener {
+                    startActivity(Intent(context, TournamentActivity::class.java))
+                    dialog.dismiss()
+                }
+            } else {
+                // Need to pay to join
+                btnAction.text = "JOIN TOURNAMENT (10/-)"
+                btnAction.setOnClickListener {
+                    handleTransaction(uid, 10.0, "tournament")
+                    dialog.dismiss()
+                }
+            }
         }
+
+        view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         dialog.show()
     }
 
-    // UPDATED: Better clarity when joining P2P Battles
     private fun showJoinBattleGateway(cUid: String, stake: Double, game: String) {
         val view = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
-        val dialog = MaterialAlertDialogBuilder(requireContext(), android.R.style.Theme_NoTitleBar_Fullscreen)
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setView(view).create()
         
         view.findViewById<TextView>(R.id.tvLiveQuestion)?.text = "BATTLE ARENA: $game"
@@ -174,6 +191,8 @@ class MarketFragment : Fragment() {
                         "tournament" -> {
                             db.child("tournaments").child("active").child("players").child(uid).setValue(true)
                             Toast.makeText(context, "Successfully Registered for Arena!", Toast.LENGTH_SHORT).show()
+                            // After paying, automatically launch the Fullscreen Arena
+                            startActivity(Intent(context, TournamentActivity::class.java))
                         }
                         "sync" -> {
                             db.child("sync_active").child(extra).child("participants").child(uid).child("name").setValue(myUsername)
