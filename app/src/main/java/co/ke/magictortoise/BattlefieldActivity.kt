@@ -14,7 +14,6 @@ import com.google.firebase.database.*
 import org.json.JSONArray
 import kotlin.random.Random
 
-// Data class to hold our 500 questions
 data class Question(
     val id: Int,
     val question: String,
@@ -34,22 +33,22 @@ class BattlefieldActivity : AppCompatActivity() {
     private var opponentScore = 0
     private var isGameOver = false
     private var mathAnswer = 0
+    private var stakeAmount = 0.0
 
-    // Trivia Variables
     private var triviaList = mutableListOf<Question>()
     private var currentQuestionIndex = 0
 
-    // UI Elements
     private lateinit var tvTimer: TextView
     private lateinit var pbMyProgress: ProgressBar
     private lateinit var pbOpponentProgress: ProgressBar
     private lateinit var gameStage: FrameLayout
     private lateinit var tvStatus: TextView
+    private lateinit var tvMyScoreLabel: TextView
+    private lateinit var tvOpponentScoreLabel: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 1. STICKY FULL SCREEN MODE
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -63,12 +62,13 @@ class BattlefieldActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         db = FirebaseDatabase.getInstance().reference
 
+        // ALIGNMENT: Getting data from MarketFragment Intent
         roomId = intent.getStringExtra("ROOM_ID")
         gameType = intent.getStringExtra("GAME_TYPE")
         isCreator = intent.getBooleanExtra("IS_CREATOR", false)
 
         initUI()
-        setupSync()
+        fetchStakeAndSync() // New function to get the money info
         startCountdown()
         loadGameLayout()
     }
@@ -79,20 +79,30 @@ class BattlefieldActivity : AppCompatActivity() {
         pbOpponentProgress = findViewById(R.id.pbOpponentProgress)
         gameStage = findViewById(R.id.gameStage)
         tvStatus = findViewById(R.id.tvWaitingMessage)
+        tvMyScoreLabel = findViewById(R.id.tvMyName)
+        tvOpponentScoreLabel = findViewById(R.id.tvOpponentName)
         
         pbMyProgress.max = 100 
         pbOpponentProgress.max = 100
     }
 
-    private fun setupSync() {
-        val opponentKey = if (isCreator) "player2_score" else "player1_score"
+    private fun fetchStakeAndSync() {
         roomId?.let { id ->
-            db.child("p2p_lobby").child(id).addValueEventListener(object : ValueEventListener {
+            val lobbyRef = db.child("p2p_lobby").child(id)
+            
+            // Get the stake first
+            lobbyRef.child("stake").get().addOnSuccessListener {
+                stakeAmount = it.getValue(Double::class.java) ?: 0.0
+            }
+
+            // Sync Scores
+            val opponentKey = if (isCreator) "player2_score" else "player1_score"
+            lobbyRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if (isGameOver) return
+                    if (isGameOver || !snapshot.exists()) return
                     opponentScore = snapshot.child(opponentKey).getValue(Int::class.java) ?: 0
                     pbOpponentProgress.progress = opponentScore
-                    findViewById<TextView>(R.id.tvOpponentName).text = "OPPONENT: $opponentScore"
+                    tvOpponentScoreLabel.text = "OPPONENT: $opponentScore"
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
@@ -115,112 +125,91 @@ class BattlefieldActivity : AppCompatActivity() {
 
     private fun loadGameLayout() {
         val inflater = layoutInflater
+        gameStage.removeAllViews()
         when (gameType) {
             "Math Blitz" -> {
-                val mathView = inflater.inflate(R.layout.game_math_blitz, gameStage, false)
-                gameStage.addView(mathView)
-                setupMathLogic(mathView)
+                val v = inflater.inflate(R.layout.game_math_blitz, gameStage, false)
+                gameStage.addView(v)
+                setupMathLogic(v)
             }
             "Tap Tortoise" -> {
-                val tapView = inflater.inflate(R.layout.game_tap_tortoise, gameStage, false)
-                gameStage.addView(tapView) 
-                setupTapLogic(tapView)
+                val v = inflater.inflate(R.layout.game_tap_tortoise, gameStage, false)
+                gameStage.addView(v) 
+                setupTapLogic(v)
             }
             "Trivia Duel" -> {
-                val triviaView = inflater.inflate(R.layout.game_trivia_duel, gameStage, false)
-                gameStage.addView(triviaView)
+                val v = inflater.inflate(R.layout.game_trivia_duel, gameStage, false)
+                gameStage.addView(v)
                 loadTriviaFromAssets()
-                showNextTriviaQuestion(triviaView)
+                showNextTriviaQuestion(v)
             }
         }
     }
 
-    // --- GAME LOGIC: TAP TORTOISE ---
     private fun setupTapLogic(view: View) {
         val ivTortoise = view.findViewById<ImageView>(R.id.ivTapTortoise)
-        val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.05f)
-        val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.05f)
-        ObjectAnimator.ofPropertyValuesHolder(ivTortoise, scaleX, scaleY).apply {
-            duration = 1000
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.REVERSE
-            start()
-        }
         ivTortoise.setOnClickListener {
             if (!isGameOver) {
-                it.animate().scaleX(1.1f).scaleY(1.1f).setDuration(50).withEndAction {
-                    it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(50).start()
-                }.start()
-                it.alpha = 0.6f
-                it.postDelayed({ it.alpha = 1.0f }, 50)
                 onPointScored()
+                // Simple animation on tap
+                it.scaleX = 0.9f
+                it.scaleY = 0.9f
+                it.postDelayed({ it.scaleX = 1.0f; it.scaleY = 1.0f }, 50)
             }
         }
     }
 
-    // --- GAME LOGIC: MATH BLITZ ---
     private fun setupMathLogic(view: View) {
         val tvQuestion = view.findViewById<TextView>(R.id.tvMathProblem)
         val etAnswer = view.findViewById<EditText>(R.id.etMathAnswer)
         val btnSubmit = view.findViewById<Button>(R.id.btnSubmitAnswer)
+        
         fun generateProblem() {
-            val a = Random.nextInt(5, 30)
-            val b = Random.nextInt(5, 30)
+            val a = Random.nextInt(5, 50)
+            val b = Random.nextInt(5, 50)
             mathAnswer = a + b
             tvQuestion.text = "$a + $b = ?"
             etAnswer.text.clear()
         }
+        
         generateProblem()
         btnSubmit.setOnClickListener {
-            val ans = etAnswer.text.toString().toIntOrNull()
-            if (ans == mathAnswer) {
+            if (etAnswer.text.toString().toIntOrNull() == mathAnswer) {
                 onPointScored()
                 generateProblem()
-            } else {
-                Toast.makeText(this, "Try again!", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // --- GAME LOGIC: TRIVIA DUEL ---
     private fun loadTriviaFromAssets() {
         try {
-            val jsonString = assets.open("questions.json").bufferedReader().use { it.readText() }
-            val jsonArray = JSONArray(jsonString)
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                val opts = obj.getJSONArray("options")
-                val optionsList = mutableListOf<String>()
-                for (j in 0 until opts.length()) optionsList.add(opts.getString(j))
-                triviaList.add(Question(obj.getInt("id"), obj.getString("question"), optionsList, obj.getString("answer")))
+            val json = assets.open("questions.json").bufferedReader().use { it.readText() }
+            val array = JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val optsArr = obj.getJSONArray("options")
+                val optsList = mutableListOf<String>()
+                for (j in 0 until optsArr.length()) optsList.add(optsArr.getString(j))
+                triviaList.add(Question(obj.getInt("id"), obj.getString("question"), optsList, obj.getString("answer")))
             }
             triviaList.shuffle()
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error loading questions", Toast.LENGTH_SHORT).show()
-        }
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     private fun showNextTriviaQuestion(view: View) {
         if (isGameOver || triviaList.isEmpty()) return
-        if (currentQuestionIndex >= triviaList.size) currentQuestionIndex = 0
+        val q = triviaList[currentQuestionIndex % triviaList.size]
+        view.findViewById<TextView>(R.id.tvTriviaQuestion).text = q.question
         
-        val currentQ = triviaList[currentQuestionIndex]
-        view.findViewById<TextView>(R.id.tvTriviaQuestion).text = currentQ.question
-        
-        val buttons = listOf<Button>(
-            view.findViewById(R.id.btnOpt1), view.findViewById(R.id.btnOpt2),
-            view.findViewById(R.id.btnOpt3), view.findViewById(R.id.btnOpt4)
-        )
-
-        buttons.forEachIndexed { index, button ->
-            button.text = currentQ.options[index]
-            button.setOnClickListener {
-                if (button.text == currentQ.answer) {
+        val ids = listOf(R.id.btnOpt1, R.id.btnOpt2, R.id.btnOpt3, R.id.btnOpt4)
+        ids.forEachIndexed { i, id ->
+            val btn = view.findViewById<Button>(id)
+            btn.text = q.options[i]
+            btn.setOnClickListener {
+                if (btn.text == q.answer) {
                     onPointScored()
                     currentQuestionIndex++
                     showNextTriviaQuestion(view)
-                } else {
-                    Toast.makeText(this, "Wrong!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -230,28 +219,52 @@ class BattlefieldActivity : AppCompatActivity() {
         if (isGameOver) return
         myScore++
         pbMyProgress.progress = myScore
-        findViewById<TextView>(R.id.tvMyName).text = "YOU: $myScore"
-        val myKey = if (isCreator) "player1_score" else "player2_score"
-        roomId?.let { id -> db.child("p2p_lobby").child(id).child(myKey).setValue(myScore) }
+        tvMyScoreLabel.text = "YOU: $myScore"
+        val key = if (isCreator) "player1_score" else "player2_score"
+        roomId?.let { db.child("p2p_lobby").child(it).child(key).setValue(myScore) }
     }
 
     private fun endGame() {
         isGameOver = true
         gameStage.visibility = View.GONE
         tvStatus.visibility = View.VISIBLE
+        
         when {
             myScore > opponentScore -> {
-                tvStatus.text = "VICTORY! 🏆\nYOU WON THE STAKE"
+                tvStatus.text = "VICTORY! 🏆\nPRIZE ADDED TO WALLET"
                 tvStatus.setTextColor(Color.GREEN)
+                payWinner(auth.currentUser!!.uid)
             }
             myScore < opponentScore -> {
-                tvStatus.text = "DEFEAT! 🐢\nOPPONENT WAS FASTER"
+                tvStatus.text = "DEFEAT! 🐢\nBETTER LUCK NEXT TIME"
                 tvStatus.setTextColor(Color.RED)
+                if (isCreator) cleanupRoom() // Only one person needs to delete the room
             }
             else -> {
-                tvStatus.text = "DRAW! 🤝\nSTAKES RETURNED"
+                tvStatus.text = "DRAW! 🤝\nSTAKE REFUNDED"
                 tvStatus.setTextColor(Color.YELLOW)
+                payWinner(auth.currentUser!!.uid, isDraw = true)
             }
         }
+    }
+
+    private fun payWinner(uid: String, isDraw: Boolean = false) {
+        // Calculate prize: 2x Stake minus 25% house cut
+        val prize = if (isDraw) stakeAmount else (stakeAmount * 2) * 0.75
+        
+        db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
+            override fun doTransaction(data: MutableData): Transaction.Result {
+                val current = data.getValue(Double::class.java) ?: 0.0
+                data.value = current + prize
+                return Transaction.success(data)
+            }
+            override fun onComplete(err: DatabaseError?, comm: Boolean, snap: DataSnapshot?) {
+                if (comm && isCreator) cleanupRoom()
+            }
+        })
+    }
+
+    private fun cleanupRoom() {
+        roomId?.let { db.child("p2p_lobby").child(it).removeValue() }
     }
 }
