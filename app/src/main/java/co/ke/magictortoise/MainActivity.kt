@@ -67,49 +67,67 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * TOURNAMENT OVERLAY ENGINE
-     * Call this function when a user joins or a tournament starts.
+     * Fixed to prevent crashes when called from fragments.
      */
     fun showTournamentOverlay(jackpotAmount: String) {
-        if (tournamentOverlay != null) return // Already showing
+        // Ensure we run this on the UI thread to prevent transaction crashes
+        runOnUiThread {
+            if (tournamentOverlay != null) {
+                // If it's already showing, just update the text instead of inflating again
+                val tvQuestion = tournamentOverlay?.findViewById<TextView>(R.id.tvLiveQuestion)
+                tvQuestion?.text = "Tournament Joined!\nJackpot: KES $jackpotAmount\nWaiting for question..."
+                return@runOnUiThread
+            }
 
-        val rootLayout = findViewById<ViewGroup>(android.R.id.content)
-        val inflater = LayoutInflater.from(this)
-        tournamentOverlay = inflater.inflate(R.layout.layout_tournament_overlay, rootLayout, false)
+            val rootLayout = findViewById<ViewGroup>(android.R.id.content)
+            val inflater = LayoutInflater.from(this)
+            
+            try {
+                // Inflate the overlay
+                tournamentOverlay = inflater.inflate(R.layout.layout_tournament_overlay, rootLayout, false)
 
-        val cardQuiz = tournamentOverlay?.findViewById<CardView>(R.id.cardQuizWindow)
-        val ivFloating = tournamentOverlay?.findViewById<ImageView>(R.id.ivFloatingTortoise)
-        val btnMinimize = tournamentOverlay?.findViewById<Button>(R.id.btnMinimize)
-        val tvQuestion = tournamentOverlay?.findViewById<TextView>(R.id.tvLiveQuestion)
+                val cardQuiz = tournamentOverlay?.findViewById<CardView>(R.id.cardQuizWindow)
+                val ivFloating = tournamentOverlay?.findViewById<ImageView>(R.id.ivFloatingTortoise)
+                val btnMinimize = tournamentOverlay?.findViewById<Button>(R.id.btnMinimize)
+                val tvQuestion = tournamentOverlay?.findViewById<TextView>(R.id.tvLiveQuestion)
+                val btnJoin = tournamentOverlay?.findViewById<Button>(R.id.btnJoinTournamentFinal)
+                val btnClose = tournamentOverlay?.findViewById<ImageButton>(R.id.btnCloseTournament)
 
-        tvQuestion?.text = "Tournament Active!\nJackpot: KES $jackpotAmount\nWaiting for question..."
+                // ALIGNMENT: Since they already joined to trigger this, hide the join button
+                btnJoin?.visibility = View.GONE
+                btnClose?.visibility = View.GONE // Minimize is used instead for the active HUD
 
-        // Add overlay to the screen
-        rootLayout.addView(tournamentOverlay)
+                tvQuestion?.text = "Tournament Active!\nJackpot: KES $jackpotAmount\nWaiting for start..."
 
-        // MINIMIZE TO FLOATING TORTOISE
-        btnMinimize?.setOnClickListener {
-            cardQuiz?.visibility = View.GONE
-            tournamentOverlay?.setBackgroundColor(Color.TRANSPARENT)
-            ivFloating?.visibility = View.VISIBLE
-            Toast.makeText(this, "Tournament minimized. Click tortoise to return!", Toast.LENGTH_SHORT).show()
-        }
+                rootLayout.addView(tournamentOverlay)
 
-        // RESTORE FROM FLOATING TORTOISE
-        ivFloating?.setOnClickListener {
-            ivFloating.visibility = View.GONE
-            tournamentOverlay?.setBackgroundColor(Color.parseColor("#CC000000"))
-            cardQuiz?.visibility = View.VISIBLE
+                // MINIMIZE TO FLOATING TORTOISE
+                btnMinimize?.setOnClickListener {
+                    cardQuiz?.visibility = View.GONE
+                    tournamentOverlay?.setBackgroundColor(Color.TRANSPARENT)
+                    ivFloating?.visibility = View.VISIBLE
+                }
+
+                // RESTORE FROM FLOATING TORTOISE
+                ivFloating?.setOnClickListener {
+                    ivFloating.visibility = View.GONE
+                    tournamentOverlay?.setBackgroundColor(Color.parseColor("#CC000000"))
+                    cardQuiz?.visibility = View.VISIBLE
+                }
+            } catch (e: Exception) {
+                Log.e("OVERLAY_ERROR", "Failed to show overlay: ${e.message}")
+                Toast.makeText(this, "Joined Tournament!", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
-    /**
-     * Function to remove overlay when tournament ends
-     */
     fun closeTournamentOverlay() {
-        val rootLayout = findViewById<ViewGroup>(android.R.id.content)
-        tournamentOverlay?.let {
-            rootLayout.removeView(it)
-            tournamentOverlay = null
+        runOnUiThread {
+            val rootLayout = findViewById<ViewGroup>(android.R.id.content)
+            tournamentOverlay?.let {
+                rootLayout.removeView(it)
+                tournamentOverlay = null
+            }
         }
     }
 }
