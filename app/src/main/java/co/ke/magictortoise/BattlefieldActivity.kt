@@ -83,14 +83,12 @@ class BattlefieldActivity : AppCompatActivity() {
         tvMyScoreLabel = findViewById(R.id.tvMyName)
         tvOpponentScoreLabel = findViewById(R.id.tvOpponentName)
         
-        // Progress bars represent the 100-point target for a quick match
         pbMyProgress.max = 100 
         pbOpponentProgress.max = 100
     }
 
     private fun fetchStakeAndSync() {
         roomId?.let { id ->
-            // Use 'active_battles' or similar if you move them out of 'p2p_lobby' after start
             val lobbyRef = db.child("p2p_lobby").child(id)
             
             lobbyRef.child("stake").get().addOnSuccessListener {
@@ -105,7 +103,6 @@ class BattlefieldActivity : AppCompatActivity() {
                     pbOpponentProgress.progress = opponentScore
                     tvOpponentScoreLabel.text = "OPPONENT: $opponentScore"
                     
-                    // Instant win if opponent hits 100
                     if (opponentScore >= 100) endGame()
                 }
                 override fun onCancelled(error: DatabaseError) {}
@@ -114,7 +111,7 @@ class BattlefieldActivity : AppCompatActivity() {
     }
 
     private fun startCountdown() {
-        object : CountDownTimer(60000, 1000) { // 60 Second Blitz
+        object : CountDownTimer(60000, 1000) { 
             override fun onTick(millisUntilFinished: Long) {
                 val seconds = millisUntilFinished / 1000
                 tvTimer.text = String.format("00:%02d", seconds)
@@ -150,7 +147,6 @@ class BattlefieldActivity : AppCompatActivity() {
         }
     }
 
-    // UPDATED: Added Teleportation to Tap Tortoise
     private fun setupTapLogic(view: View) {
         val ivTortoise = view.findViewById<ImageView>(R.id.ivTapTortoise)
         
@@ -158,7 +154,6 @@ class BattlefieldActivity : AppCompatActivity() {
             if (!isGameOver) {
                 onPointScored()
                 
-                // Teleport logic: Move the tortoise to a random spot in the frame
                 val maxX = gameStage.width - ivTortoise.width
                 val maxY = gameStage.height - ivTortoise.height
                 
@@ -167,7 +162,6 @@ class BattlefieldActivity : AppCompatActivity() {
                     ivTortoise.y = Random.nextInt(maxY).toFloat()
                 }
 
-                // Pop animation
                 it.scaleX = 0.8f
                 it.scaleY = 0.8f
                 it.animate().scaleX(1.1f).scaleY(1.1f).setDuration(100).withEndAction {
@@ -178,7 +172,6 @@ class BattlefieldActivity : AppCompatActivity() {
         }
     }
 
-    // UPDATED: Multi-operator Math Logic
     private fun setupMathLogic(view: View) {
         val tvQuestion = view.findViewById<TextView>(R.id.tvMathProblem)
         val etAnswer = view.findViewById<EditText>(R.id.etMathAnswer)
@@ -230,7 +223,11 @@ class BattlefieldActivity : AppCompatActivity() {
     private fun showNextTriviaQuestion(view: View) {
         if (isGameOver || triviaList.isEmpty()) return
         val q = triviaList[currentQuestionIndex % triviaList.size]
-        view.findViewById<TextView>(R.id.tvTriviaQuestion).text = q.question
+        
+        // FIXED: Using tvTournamentJackpot for the question text (Large White)
+        // and tvLiveQuestion (Small Grey) for a status label.
+        view.findViewById<TextView>(R.id.tvLiveQuestion).text = "QUESTION:"
+        view.findViewById<TextView>(R.id.tvTournamentJackpot).text = q.question
         
         val ids = listOf(R.id.btnOpt1, R.id.btnOpt2, R.id.btnOpt3, R.id.btnOpt4)
         ids.forEachIndexed { i, id ->
@@ -275,7 +272,6 @@ class BattlefieldActivity : AppCompatActivity() {
             myScore < opponentScore -> {
                 tvStatus.text = "DEFEAT! 🐢\nTRY AGAIN"
                 tvStatus.setTextColor(Color.RED)
-                // Opponent will clean up
             }
             else -> {
                 tvStatus.text = "DRAW! 🤝\nREFUNDED"
@@ -286,7 +282,6 @@ class BattlefieldActivity : AppCompatActivity() {
     }
 
     private fun payWinner(uid: String, isDraw: Boolean = false) {
-        // Prize: (Stake * 2) - 25% Admin Fee. If draw, just refund stake.
         val prize = if (isDraw) stakeAmount else (stakeAmount * 2) * 0.75
         
         db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
@@ -303,7 +298,6 @@ class BattlefieldActivity : AppCompatActivity() {
 
     private fun cleanupRoom() {
         roomId?.let { 
-            // Give a 5 second delay so opponent can see their result screen before node vanishes
             tvStatus.postDelayed({
                 db.child("p2p_lobby").child(it).removeValue() 
             }, 5000)
