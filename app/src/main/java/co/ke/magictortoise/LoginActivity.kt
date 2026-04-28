@@ -37,7 +37,7 @@ class LoginActivity : AppCompatActivity() {
         val tvSubtitle = findViewById<TextView>(R.id.loginSubtitle)
 
         // 2. Add the excitement!
-        tvSubtitle.text = "Sign in to earn shells & redeem for FREE Airtime!"
+        tvSubtitle.text = "Sign in to play P2P battles & enter the Grand Tournament Arena!"
         btnGoogleSignIn.text = "CONTINUE WITH GOOGLE"
 
         // 3. Configure Google Sign In
