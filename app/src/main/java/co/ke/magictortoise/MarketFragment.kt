@@ -24,7 +24,6 @@ class MarketFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         val uid = auth.currentUser?.uid ?: return
 
         db.child("users").child(uid).get().addOnSuccessListener {
@@ -42,10 +41,12 @@ class MarketFragment : Fragment() {
         btnTournament.setOnClickListener { if (checkProfile()) showTournamentFullScreen() }
         btnCreateBattle.setOnClickListener { if (checkProfile()) showCreateBattleDialog(uid) }
 
+        // Live Tournament Tracker
         db.child("tournaments").child("active").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!isAdded) return
                 val count = snapshot.child("players").childrenCount.toInt()
+                // Logic: (Total Entry Fees * 75%)
                 val calculatedJackpot = (count * 10.0) * 0.75
                 currentJackpotDisplay = String.format("%.2f", calculatedJackpot)
                 tvPlayers?.text = "Participants: $count"
@@ -54,6 +55,7 @@ class MarketFragment : Fragment() {
             override fun onCancelled(error: DatabaseError) {}
         })
 
+        // Live P2P Lobby
         db.child("p2p_lobby").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!isAdded) return
@@ -90,13 +92,34 @@ class MarketFragment : Fragment() {
         val dialog = MaterialAlertDialogBuilder(requireContext(), android.R.style.Theme_NoTitleBar_Fullscreen)
             .setView(view).create()
         
-        view.findViewById<TextView>(R.id.tvLiveQuestion)?.text = "CURRENT JACKPOT\nKES $currentJackpotDisplay"
+        // FIX: Ensuring the text reflects the LATEST jackpot value
+        val display = view.findViewById<TextView>(R.id.tvLiveQuestion)
+        display?.text = "GRAND TOURNAMENT\nJACKPOT: KES $currentJackpotDisplay"
 
         view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         view.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
             handleTransaction(auth.uid!!, 10.0, "tournament")
             dialog.dismiss()
         }
+        dialog.show()
+    }
+
+    private fun showJoinBattleGateway(cUid: String, stake: Double, game: String) {
+        val view = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
+        val dialog = MaterialAlertDialogBuilder(requireContext(), android.R.style.Theme_NoTitleBar_Fullscreen)
+            .setView(view).create()
+        
+        // Customizing the shared overlay for P2P Joining
+        val display = view.findViewById<TextView>(R.id.tvLiveQuestion)
+        display?.text = "BATTLE ARENA\nGame: $game\nStake: KES $stake"
+        
+        val actionBtn = view.findViewById<Button>(R.id.btnJoinTournamentFinal)
+        actionBtn.text = "ACCEPT CHALLENGE"
+        actionBtn.setOnClickListener {
+            handleTransaction(auth.uid!!, stake, "p2p_join", "$cUid|$game")
+            dialog.dismiss()
+        }
+        view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         dialog.show()
     }
 
@@ -116,19 +139,6 @@ class MarketFragment : Fragment() {
         }.show()
     }
 
-    private fun showJoinBattleGateway(cUid: String, stake: Double, game: String) {
-        val view = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
-        val dialog = MaterialAlertDialogBuilder(requireContext(), android.R.style.Theme_NoTitleBar_Fullscreen)
-            .setView(view).create()
-        view.findViewById<Button>(R.id.btnJoinTournamentFinal).text = "JOIN FOR $stake/-"
-        view.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
-            handleTransaction(auth.uid!!, stake, "p2p_join", "$cUid|$game")
-            dialog.dismiss()
-        }
-        view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
-        dialog.show()
-    }
-
     private fun showCreateBattleDialog(uid: String) {
         val view = layoutInflater.inflate(R.layout.dialog_create_battle, null)
         val dialog = MaterialAlertDialogBuilder(requireContext()).setView(view).create()
@@ -141,6 +151,8 @@ class MarketFragment : Fragment() {
             if (amt >= 20.0) {
                 handleTransaction(uid, amt, "p2p_create", sp.selectedItem.toString())
                 dialog.dismiss()
+            } else {
+                Toast.makeText(context, "Min stake is 20/-", Toast.LENGTH_SHORT).show()
             }
         }
         dialog.show()
@@ -158,13 +170,8 @@ class MarketFragment : Fragment() {
                 if (comm) {
                     when (type) {
                         "tournament" -> {
-                            // Register the player for the upcoming timed event
                             db.child("tournaments").child("active").child("players").child(uid).setValue(true)
-                            
-                            activity?.runOnUiThread {
-                                (activity as? MainActivity)?.showTournamentOverlay(currentJackpotDisplay)
-                                Toast.makeText(context, "Registered for next Arena event!", Toast.LENGTH_SHORT).show()
-                            }
+                            Toast.makeText(context, "Registration Successful!", Toast.LENGTH_SHORT).show()
                         }
                         "sync" -> {
                             db.child("sync_active").child(extra).child("participants").child(uid).child("name").setValue(myUsername)
@@ -178,6 +185,7 @@ class MarketFragment : Fragment() {
                         }
                         "p2p_join" -> {
                             val p = extra.split("|")
+                            db.child("p2p_lobby").child(p[0]).removeValue() // Remove from lobby once joined
                             startActivity(Intent(context, BattlefieldActivity::class.java).apply {
                                 putExtra("ROOM_ID", p[0]); putExtra("GAME_TYPE", p[1]); putExtra("IS_CREATOR", false)
                             })
