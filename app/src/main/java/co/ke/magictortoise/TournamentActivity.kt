@@ -23,13 +23,21 @@ class TournamentActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Using your existing overlay layout instead of creating a new one
+        
+        // Fullscreen setup
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        supportActionBar?.hide()
+
         setContentView(R.layout.layout_tournament_overlay)
 
-        // Adjust UI for the "Arena" mode
+        // Adjust UI: Hide unnecessary buttons for Arena mode
         findViewById<View>(R.id.btnMinimize)?.visibility = View.GONE
         findViewById<View>(R.id.btnCloseTournament)?.visibility = View.GONE
-        findViewById<Button>(R.id.btnJoinTournamentFinal)?.visibility = View.GONE
 
         loadTriviaFromAssets()
         startTournamentTimer()
@@ -68,30 +76,38 @@ class TournamentActivity : AppCompatActivity() {
 
         val question = triviaList[currentIndex % triviaList.size]
         
-        // Using tvLiveQuestion because it exists in your XML
-        findViewById<TextView>(R.id.tvLiveQuestion).text = question.question
-
-        // NOTE: If you don't have 4 buttons in layout_tournament_overlay, 
-        // this part needs the correct IDs from that XML. 
-        // For now, I will use a Toast to show the score since the IDs were missing.
+        // FIXED: Using the IDs from your actual XML
+        // Small grey label shows the status
+        findViewById<TextView>(R.id.tvLiveQuestion).text = "TOURNAMENT QUESTION:"
         
-        // I'm adding this check to prevent another crash if buttons aren't there
-        val btnJoin = findViewById<Button>(R.id.btnJoinTournamentFinal)
-        btnJoin.visibility = View.VISIBLE
-        btnJoin.text = "NEXT QUESTION"
-        btnJoin.setOnClickListener {
+        // Large white text shows the actual question
+        findViewById<TextView>(R.id.tvTournamentJackpot).text = question.question
+
+        val btnAction = findViewById<Button>(R.id.btnJoinTournamentFinal)
+        btnAction.visibility = View.VISIBLE
+        btnAction.text = "NEXT QUESTION"
+        
+        btnAction.setOnClickListener {
+            // In Arena mode, we increment score for each answered and move on
+            score += 10 
             currentIndex++
-            displayQuestion()
+            if (currentIndex < triviaList.size) {
+                displayQuestion()
+            } else {
+                submitScore()
+            }
         }
     }
 
     private fun startTournamentTimer() {
+        // 5 Minute Arena
         object : CountDownTimer(300000, 1000) {
             override fun onTick(ms: Long) {
                 val m = (ms / 60000) % 60
                 val s = (ms / 1000) % 60
-                // Reusing tvLiveQuestion to show time if needed, or update title
-                title = String.format("Arena Time: %02d:%02d", m, s)
+                // Optionally show timer in the small label
+                findViewById<TextView>(R.id.tvLiveQuestion).text = 
+                    String.format("TIME LEFT: %02d:%02d | SCORE: %d", m, s, score)
             }
 
             override fun onFinish() {
@@ -103,9 +119,13 @@ class TournamentActivity : AppCompatActivity() {
 
     private fun submitScore() {
         val uid = auth.currentUser?.uid ?: return
+        // Saving score to tournaments/active/scores/uid
         db.child("tournaments").child("active").child("scores").child(uid).setValue(score)
             .addOnSuccessListener {
-                Toast.makeText(this, "Arena Finished! Score: $score", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Tournament Ended! Final Score: $score", Toast.LENGTH_LONG).show()
+                finish()
+            }
+            .addOnFailureListener {
                 finish()
             }
     }
