@@ -26,7 +26,7 @@ class TournamentActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Forced Fullscreen Immersive Mode for true Arena feel
+        // Fullscreen Arena Mode
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -37,11 +37,10 @@ class TournamentActivity : AppCompatActivity() {
 
         setContentView(R.layout.layout_tournament_overlay)
 
-        // UI Setup: Hide navigation buttons in Arena mode
         findViewById<View>(R.id.btnMinimize)?.visibility = View.GONE
         findViewById<View>(R.id.btnCloseTournament)?.visibility = View.GONE
 
-        // Step 1: Wait for 2+ participants before loading questions
+        // Arena Logic: Wait for participants
         checkLobbyAndStart()
     }
 
@@ -58,26 +57,22 @@ class TournamentActivity : AppCompatActivity() {
                 if (isGameOver) return
                 
                 val playerCount = snapshot.child("players").childrenCount.toInt()
-                // In your screenshot, you are Participant 1. 
-                // Arena starts only when Participant count >= 2.
+                // Game starts only when 2 or more users are in
                 if (playerCount >= 2) {
-                    tvStatus.text = "CHALLENGER FOUND! STARTING..."
+                    tvStatus.text = "CHALLENGERS FOUND!"
                     loadTriviaFromAssets()
-                    // Remove listener once game starts
                     db.child("tournaments").child("active").removeEventListener(this)
                 } else {
                     tvStatus.text = "WAITING FOR CHALLENGERS..."
-                    tvMain.text = "Participants: $playerCount/2\n\nArena starts when a second player joins."
+                    tvMain.text = "Participants: $playerCount/2\n\nArena starts when others join."
                 }
             }
-
             override fun onCancelled(error: DatabaseError) {}
         })
     }
 
     private fun loadTriviaFromAssets() {
         try {
-            // FIX: Ensure 'questions.json' is lowercase in your local 'assets' folder
             val jsonString = assets.open("questions.json").bufferedReader().use { it.readText() }
             val jsonArray = JSONArray(jsonString)
             
@@ -97,8 +92,7 @@ class TournamentActivity : AppCompatActivity() {
             triviaList.shuffle()
             displayQuestion() 
         } catch (e: Exception) {
-            // This triggers the Toast you saw in your screenshot if the file is missing locally
-            Toast.makeText(this, "ERROR: questions.json missing in local assets!", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Arena Error: Asset Path Mismatch", Toast.LENGTH_LONG).show()
             finish()
         }
     }
@@ -118,12 +112,13 @@ class TournamentActivity : AppCompatActivity() {
         btnAction.text = "SUBMIT ANSWER"
         btnAction.visibility = View.VISIBLE
 
-        // ANTI-CHEAT: 10-second timer per question
+        // 10s Anti-Cheat Timer
         questionTimer?.cancel()
         questionTimer = object : CountDownTimer(10000, 100) {
             override fun onTick(ms: Long) {
                 val secondsLeft = ms / 1000
-                tvStatus.text = "ARENA PROGRESS: ${currentIndex + 1}/20 | TIME: $secondsLefts"
+                // TYPO FIXED HERE: secondsLeft instead of secondsLefts
+                tvStatus.text = "ARENA PROGRESS: ${currentIndex + 1}/20 | TIME: $secondsLeft"
                 
                 if (secondsLeft <= 3) {
                     tvStatus.setTextColor(Color.RED) 
@@ -133,13 +128,11 @@ class TournamentActivity : AppCompatActivity() {
             }
 
             override fun onFinish() {
-                Toast.makeText(this@TournamentActivity, "TIME EXPIRED!", Toast.LENGTH_SHORT).show()
                 nextQuestion()
             }
         }.start()
 
         btnAction.setOnClickListener {
-            // Logic for checking answers would go here
             score += 10 
             nextQuestion()
         }
@@ -155,7 +148,6 @@ class TournamentActivity : AppCompatActivity() {
         isGameOver = true
         val uid = auth.currentUser?.uid ?: return
         
-        // Save final score to Firebase
         db.child("tournaments").child("active").child("scores").child(uid).setValue(score)
             .addOnSuccessListener {
                 Toast.makeText(this, "Arena Finished! Final Score: $score", Toast.LENGTH_LONG).show()
