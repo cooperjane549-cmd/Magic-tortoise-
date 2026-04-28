@@ -1,5 +1,6 @@
 package co.ke.magictortoise
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.LayoutInflater
@@ -17,6 +18,7 @@ import com.google.firebase.database.*
 import com.unity3d.ads.IUnityAdsShowListener
 import com.unity3d.ads.UnityAds
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import java.util.*
 import kotlin.random.Random
 
 class DashboardFragment : Fragment() {
@@ -53,7 +55,6 @@ class DashboardFragment : Fragment() {
         if (currentUser != null) {
             val uid = currentUser.uid
             
-            // Sync UI with Firebase
             db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!isAdded) return
@@ -67,28 +68,90 @@ class DashboardFragment : Fragment() {
                 override fun onCancelled(p0: DatabaseError) {}
             })
 
-            startTournamentCountdown(tvCountdown)
+            // Logic 1: Start the 2-hour window timer
+            calculateAndStartTimer(tvCountdown)
         }
 
         loadAd()
-
         btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
-
         btnJoinTournament?.setOnClickListener {
             val activityView = activity?.window?.decorView
             val bottomNav = findBottomNav(activityView)
             bottomNav?.selectedItemId = R.id.nav_market
         }
 
-        // TIGHTENED: 24hr Spin Logic
-        cardSpin?.setOnClickListener {
-            checkDailyLimit("lastSpin") { showSpinDialog() }
+        cardSpin?.setOnClickListener { checkDailyLimit("lastSpin") { showSpinDialog() } }
+        cardScratch?.setOnClickListener { checkDailyLimit("lastScratch") { showScratchDialog() } }
+    }
+
+    // NEW LOGIC: Calculate exact time until next even hour
+    private fun calculateAndStartTimer(tvTimer: TextView?) {
+        val now = Calendar.getInstance()
+        val nextHour = if (now.get(Calendar.HOUR_OF_DAY) % 2 == 0) {
+            now.get(Calendar.HOUR_OF_DAY) + 2
+        } else {
+            now.get(Calendar.HOUR_OF_DAY) + 1
         }
 
-        // TIGHTENED: 24hr Scratch Logic
-        cardScratch?.setOnClickListener {
-            checkDailyLimit("lastScratch") { showScratchDialog() }
+        val target = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, nextHour)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
         }
+
+        val millisUntilStart = target.timeInMillis - now.timeInMillis
+
+        countdownTimer?.cancel()
+        countdownTimer = object : CountDownTimer(millisUntilStart, 1000) {
+            override fun onTick(ms: Long) {
+                val h = (ms / 3600000)
+                val m = (ms / 60000) % 60
+                val s = (ms / 1000) % 60
+                tvTimer?.text = String.format("Next Arena: %02d:%02d:%02d", h, m, s)
+            }
+
+            override fun onFinish() {
+                tvTimer?.text = "Checking Arena..."
+                checkTournamentViability()
+                calculateAndStartTimer(tvTimer) // Cycle to the next 2 hours
+            }
+        }.start()
+    }
+
+    // NEW LOGIC: Check if at least 2 players joined
+    private fun checkTournamentViability() {
+        val uid = auth.currentUser?.uid ?: return
+        val tournamentRef = db.child("tournaments").child("active")
+
+        tournamentRef.get().addOnSuccessListener { snapshot ->
+            if (!isAdded) return@addOnSuccessListener
+            
+            val participants = snapshot.child("players")
+            val count = participants.childrenCount.toInt()
+
+            if (participants.hasChild(uid)) {
+                if (count >= 2) {
+                    // Start the real game
+                    startActivity(Intent(context, TournamentActivity::class.java))
+                } else {
+                    // Only 1 player joined. Refund and clear room.
+                    refundUser(uid)
+                    tournamentRef.removeValue() 
+                    Toast.makeText(context, "Tournament canceled: Need at least 2 players. 10.00 Refunded.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun refundUser(uid: String) {
+        db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
+            override fun doTransaction(data: MutableData): Transaction.Result {
+                val current = data.getValue(Double::class.java) ?: 0.0
+                data.value = current + 10.0 
+                return Transaction.success(data)
+            }
+            override fun onComplete(a: DatabaseError?, b: Boolean, c: DataSnapshot?) {}
+        })
     }
 
     private fun checkDailyLimit(nodeName: String, onAvailable: () -> Unit) {
@@ -109,7 +172,6 @@ class DashboardFragment : Fragment() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_spin_wheel, null)
         builder.setView(dialogView)
         val dialog = builder.create()
-
         val wheelImage = dialogView.findViewById<ImageView>(R.id.ivWheel)
         val btnSpinAction = dialogView.findViewById<Button>(R.id.btnSpinAction)
 
@@ -118,17 +180,13 @@ class DashboardFragment : Fragment() {
             val sectorIndex = Random.nextInt(16) 
             val targetRotation = (360f * 10) + (360f - (sectorIndex * 22.5f))
 
-            wheelImage?.animate()
-                ?.rotationBy(targetRotation)
-                ?.setDuration(5000)
-                ?.withEndAction {
-                    val prizes = listOf(0.0, 0.0, 0.50, 0.10, 0.20, 0.50, 0.20, 0.10, 0.05, 0.01, 0.01, 0.05, 0.05, 0.10, 0.0, 0.10)
-                    val win = prizes[sectorIndex]
-                    
-                    updateUserBalance(win, "lastSpin")
-                    if (win > 0) Toast.makeText(context, "You won KES $win!", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
-                }?.start()
+            wheelImage?.animate()?.rotationBy(targetRotation)?.setDuration(5000)?.withEndAction {
+                val prizes = listOf(0.0, 0.0, 0.50, 0.10, 0.20, 0.50, 0.20, 0.10, 0.05, 0.01, 0.01, 0.05, 0.05, 0.10, 0.0, 0.10)
+                val win = prizes[sectorIndex]
+                updateUserBalance(win, "lastSpin")
+                if (win > 0) Toast.makeText(context, "You won KES $win!", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }?.start()
         }
         dialog.show()
     }
@@ -138,11 +196,9 @@ class DashboardFragment : Fragment() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_scratch_card, null)
         builder.setView(dialogView)
         val dialog = builder.create()
-
         val btnClaim = dialogView.findViewById<Button>(R.id.btnClaimScratch)
         val tvResult = dialogView.findViewById<TextView>(R.id.tvScratchResult)
         val scratchOverlay = dialogView.findViewById<View>(R.id.scratchOverlay)
-
         val prize = 0.05
         tvResult?.text = "KES $prize"
 
@@ -156,7 +212,6 @@ class DashboardFragment : Fragment() {
             }
             true
         }
-
         btnClaim?.setOnClickListener {
             updateUserBalance(prize, "lastScratch")
             dialog.dismiss()
@@ -187,7 +242,6 @@ class DashboardFragment : Fragment() {
         userRef.child("adCycle").get().addOnSuccessListener { snapshot ->
             val currentCycle = snapshot.getValue(Int::class.java) ?: 0
             val nextCycle = if (currentCycle >= 35) 1 else currentCycle + 1
-            
             val updates = hashMapOf<String, Any>(
                 "balance" to ServerValue.increment(0.02),
                 "adCycle" to nextCycle
@@ -230,18 +284,6 @@ class DashboardFragment : Fragment() {
             override fun onUnityAdsShowStart(p0: String) {}
             override fun onUnityAdsShowClick(p0: String) {}
         })
-    }
-
-    private fun startTournamentCountdown(tvTimer: TextView?) {
-        countdownTimer = object : CountDownTimer(14400000, 1000) {
-            override fun onTick(ms: Long) {
-                val h = (ms / 3600000) % 24
-                val m = (ms / 60000) % 60
-                val s = (ms / 1000) % 60
-                tvTimer?.text = String.format("%02d:%02d:%02d", h, m, s)
-            }
-            override fun onFinish() { tvTimer?.text = "LIVE!" }
-        }.start()
     }
 
     override fun onDestroyView() {
