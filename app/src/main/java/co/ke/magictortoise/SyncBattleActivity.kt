@@ -1,118 +1,125 @@
 package co.ke.magictortoise
 
+import android.graphics.Color
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import kotlin.random.Random
 
 class SyncBattleActivity : AppCompatActivity() {
 
     private val db = FirebaseDatabase.getInstance().reference
     private val auth = FirebaseAuth.getInstance()
+    private var syncTimer: CountDownTimer? = null
+    private var isSettled = false
     
-    private lateinit var tvStatus: TextView
-    private lateinit var tvTimer: TextView
-    private lateinit var tvRoomDetails: TextView
-
-    private var roomName: String = ""
-    private var stake: Double = 0.0
-    private var playerCount: Int = 0
-    private var isTimerRunning = false
+    private lateinit var roomId: String
+    private var stakeAmount: Double = 0.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Fullscreen Mode
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        supportActionBar?.hide()
+
         setContentView(R.layout.activity_sync_battle)
 
-        tvStatus = findViewById(R.id.tvSyncStatus)
-        tvTimer = findViewById(R.id.tvSyncTimer)
-        tvRoomDetails = findViewById(R.id.tvRoomDetails)
-
-        // FIXED: Match key with MarketFragment
-        roomName = intent.getStringExtra("ROOM_ID") ?: ""
-
-        // Extracting data from room string: "2_players_at_20_stake"
-        if (roomName.isNotEmpty()) {
-            try {
-                val parts = roomName.split("_")
-                playerCount = parts[0].toInt()
-                stake = parts[3].toDouble()
-            } catch (e: Exception) {
-                playerCount = 2 // Fallback
-                stake = 20.0
-            }
-        }
-
-        tvRoomDetails.text = "Pool: $playerCount Players | Stake: KES $stake"
-
-        if (roomName.isNotEmpty()) {
-            monitorRoom()
-        } else {
-            Toast.makeText(this, "Room Error", Toast.LENGTH_SHORT).show()
-            finish()
-        }
-    }
-
-    private fun monitorRoom() {
-        db.child("sync_active").child(roomName).child("participants")
-            .addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val currentJoined = snapshot.childrenCount.toInt()
-                    
-                    if (currentJoined < playerCount) {
-                        tvStatus.text = "Waiting for players... ($currentJoined/$playerCount)"
-                        tvTimer.text = "Syncing..."
-                    } else {
-                        if (!isTimerRunning) {
-                            startTenMinuteCountdown()
-                        }
-                    }
-                }
-                override fun onCancelled(error: DatabaseError) {}
-            })
-    }
-
-    private fun startTenMinuteCountdown() {
-        isTimerRunning = true
-        tvStatus.text = "POOL FULL! Preparing Game..."
+        roomId = intent.getStringExtra("ROOM_ID") ?: ""
         
-        object : CountDownTimer(600000, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                val mins = (millisUntilFinished / 1000) / 60
-                val secs = (millisUntilFinished / 1000) % 60
-                tvTimer.text = String.format("%02d:%02d", mins, secs)
+        startSettlementProcess()
+    }
+
+    private fun startSettlementProcess() {
+        val tvTimer = findViewById<TextView>(R.id.tvSyncTimer)
+        val tvStatus = findViewById<TextView>(R.id.tvSyncStatus)
+
+        // The 2-minute Binance-style countdown
+        syncTimer = object : CountDownTimer(120000, 1000) {
+            override fun onTick(ms: Long) {
+                val min = (ms / 1000) / 60
+                val sec = (ms / 1000) % 60
+                tvTimer.text = String.format("%02d:%02d", min, sec)
+                
+                if (ms <= 10000) tvTimer.setTextColor(Color.RED)
             }
 
             override fun onFinish() {
-                tvTimer.text = "GO!"
-                launchTriviaGame()
+                tvTimer.text = "00:00"
+                tvStatus.text = "SYNC COMPLETE"
+                pickWinner()
             }
         }.start()
     }
 
-    private fun launchTriviaGame() {
-        Toast.makeText(this, "Game Starting Now!", Toast.LENGTH_SHORT).show()
+    private fun pickWinner() {
+        if (isSettled) return
+        isSettled = true
+
+        // Room listener to get creator/joiner IDs
+        db.child("sync_active").child(roomId).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val creator = snapshot.child("creator").value.toString()
+                val joiner = snapshot.child("joiner").value.toString()
+                val stake = snapshot.child("stake").getValue(Double::class.java) ?: 0.0
+                
+                // Only creator's app runs the math to save resources
+                if (auth.currentUser?.uid == creator) {
+                    val winnerId = if (Random.nextBoolean()) creator else joiner
+                    db.child("sync_active").child(roomId).child("winner").setValue(winnerId)
+                    
+                    // Pay out the winner (stake * 2)
+                    transferWinnings(winnerId, stake * 2)
+                }
+                
+                observeWinnerUpdate()
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
     }
 
-    fun declareWinner(winnerUid: String) {
-        val totalPool = stake * playerCount
-        val winnerPrize = totalPool * 0.75
-
-        db.child("users").child(winnerUid).child("balance").runTransaction(object : Transaction.Handler {
-            override fun doTransaction(mutableData: MutableData): Transaction.Result {
-                val currentBal = mutableData.getValue(Double::class.java) ?: 0.0
-                mutableData.value = currentBal + winnerPrize
-                return Transaction.success(mutableData)
+    private fun transferWinnings(uid: String, totalPot: Double) {
+        db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
+            override fun doTransaction(data: MutableData): Transaction.Result {
+                val bal = data.getValue(Double::class.java) ?: 0.0
+                data.value = bal + totalPot
+                return Transaction.success(data)
             }
+            override fun onComplete(p0: DatabaseError?, p1: Boolean, p2: DataSnapshot?) {}
+        })
+    }
 
-            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                if (committed) {
-                    db.child("sync_active").child(roomName).removeValue()
-                    finish()
+    private fun observeWinnerUpdate() {
+        db.child("sync_active").child(roomId).child("winner").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val winner = snapshot.value.toString()
+                    val tvStatus = findViewById<TextView>(R.id.tvSyncStatus)
+                    
+                    if (auth.currentUser?.uid == winner) {
+                        tvStatus.text = "YOU WON!"
+                        tvStatus.setTextColor(Color.GREEN)
+                    } else {
+                        tvStatus.text = "LOST"
+                        tvStatus.setTextColor(Color.RED)
+                    }
                 }
             }
+            override fun onCancelled(error: DatabaseError) {}
         })
+    }
+
+    override fun onBackPressed() {
+        if (isSettled) super.onBackPressed() else Toast.makeText(this, "STAY ON SCREEN FOR SETTLEMENT!", Toast.LENGTH_SHORT).show()
     }
 }
