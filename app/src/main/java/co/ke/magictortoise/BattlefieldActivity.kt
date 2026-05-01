@@ -1,8 +1,6 @@
 package co.ke.magictortoise
 
 import android.animation.ObjectAnimator
-import android.animation.PropertyValuesHolder
-import android.animation.ValueAnimator
 import android.graphics.Color
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -14,31 +12,25 @@ import com.google.firebase.database.*
 import org.json.JSONArray
 import kotlin.random.Random
 
-// Standard Data class for Trivia
-data class Question(
-    val id: Int,
-    val question: String,
-    val options: List<String>,
-    val answer: String
-)
-
 class BattlefieldActivity : AppCompatActivity() {
 
     private lateinit var db: DatabaseReference
     private lateinit var auth: FirebaseAuth
+    
+    // Logic Variables
     private var roomId: String? = null
     private var gameType: String? = null
+    private var roomType: String = "p2p" // New: p2p, sync, or tournament
     private var isCreator: Boolean = false
-
     private var myScore = 0
     private var opponentScore = 0
     private var isGameOver = false
     private var mathAnswer = 0
     private var stakeAmount = 0.0
-
     private var triviaList = mutableListOf<Question>()
     private var currentQuestionIndex = 0
 
+    // UI Elements
     private lateinit var tvTimer: TextView
     private lateinit var pbMyProgress: ProgressBar
     private lateinit var pbOpponentProgress: ProgressBar
@@ -50,7 +42,6 @@ class BattlefieldActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Fullscreen immersive mode
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -64,12 +55,14 @@ class BattlefieldActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         db = FirebaseDatabase.getInstance().reference
 
+        // Get data from Intent
         roomId = intent.getStringExtra("ROOM_ID")
-        gameType = intent.getStringExtra("GAME_TYPE")
+        gameType = intent.getStringExtra("GAME_TYPE") ?: "Math Blitz"
         isCreator = intent.getBooleanExtra("IS_CREATOR", false)
+        roomType = intent.getStringExtra("ROOM_TYPE") ?: "p2p"
 
         initUI()
-        fetchStakeAndSync()
+        fetchDataAndSync()
         startCountdown()
         loadGameLayout()
     }
@@ -85,32 +78,69 @@ class BattlefieldActivity : AppCompatActivity() {
         
         pbMyProgress.max = 100 
         pbOpponentProgress.max = 100
-    }
-
-    private fun fetchStakeAndSync() {
-        roomId?.let { id ->
-            val lobbyRef = db.child("p2p_lobby").child(id)
-            
-            lobbyRef.child("stake").get().addOnSuccessListener {
-                stakeAmount = it.getValue(Double::class.java) ?: 0.0
-            }
-
-            val opponentKey = if (isCreator) "player2_score" else "player1_score"
-            lobbyRef.addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (isGameOver || !snapshot.exists()) return
-                    opponentScore = snapshot.child(opponentKey).getValue(Int::class.java) ?: 0
-                    pbOpponentProgress.progress = opponentScore
-                    tvOpponentScoreLabel.text = "OPPONENT: $opponentScore"
-                    
-                    if (opponentScore >= 100) endGame()
-                }
-                override fun onCancelled(error: DatabaseError) {}
-            })
+        
+        // If Tournament, we might hide the opponent bar or change the label
+        if (roomType == "tournament") {
+            tvOpponentScoreLabel.text = "TOP SCORE: 0"
         }
     }
 
+    private fun fetchDataAndSync() {
+        val id = roomId ?: return
+        
+        // 1. Determine which Firebase node to watch
+        val nodePath = when(roomType) {
+            "sync" -> "sync_active/$id"
+            "tournament" -> "tournaments/active"
+            else -> "p2p_lobby/$id"
+        }
+        
+        val roomRef = db.child(nodePath)
+
+        // 2. Fetch Stake for P2P/Sync
+        roomRef.child("stake").get().addOnSuccessListener {
+            stakeAmount = it.getValue(Double::class.java) ?: 0.0
+        }
+
+        // 3. LISTEN FOR OPPONENT SCORE (The "Sync" Bridge)
+        val opponentKey = if (roomType == "tournament") "topScore" 
+                         else if (isCreator) "joinerScore" else "creatorScore"
+        
+        roomRef.child(opponentKey).addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (isGameOver) return
+                opponentScore = snapshot.getValue(Int::class.java) ?: 0
+                pbOpponentProgress.progress = opponentScore
+                tvOpponentScoreLabel.text = if(roomType == "tournament") "TOP SCORE: $opponentScore" else "OPPONENT: $opponentScore"
+                
+                if (roomType != "tournament" && opponentScore >= 100) endGame()
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun onPointScored() {
+        if (isGameOver) return
+        myScore++
+        pbMyProgress.progress = myScore
+        tvMyScoreLabel.text = "YOU: $myScore"
+        
+        val id = roomId ?: return
+        
+        // Determine where to save my score
+        val myKey = if (isCreator) "creatorScore" else "joinerScore"
+        
+        when(roomType) {
+            "sync" -> db.child("sync_active").child(id).child(myKey).setValue(myScore)
+            "tournament" -> db.child("tournaments").child("active").child("scores").child(auth.uid!!).setValue(myScore)
+            else -> db.child("p2p_lobby").child(id).child(if(isCreator) "player1_score" else "player2_score").setValue(myScore)
+        }
+
+        if (myScore >= 100) endGame()
+    }
+
     private fun startCountdown() {
+        // Master Timer (Usually 60s)
         object : CountDownTimer(60000, 1000) { 
             override fun onTick(millisUntilFinished: Long) {
                 val seconds = millisUntilFinished / 1000
@@ -125,8 +155,8 @@ class BattlefieldActivity : AppCompatActivity() {
     }
 
     private fun loadGameLayout() {
-        val inflater = layoutInflater
         gameStage.removeAllViews()
+        val inflater = layoutInflater
         when (gameType) {
             "Math Blitz" -> {
                 val v = inflater.inflate(R.layout.game_math_blitz, gameStage, false)
@@ -138,36 +168,11 @@ class BattlefieldActivity : AppCompatActivity() {
                 gameStage.addView(v) 
                 setupTapLogic(v)
             }
-            "Trivia Duel" -> {
+            "Trivia Duel", "Tournament" -> {
                 val v = inflater.inflate(R.layout.game_trivia_duel, gameStage, false)
                 gameStage.addView(v)
                 loadTriviaFromAssets()
                 showNextTriviaQuestion(v)
-            }
-        }
-    }
-
-    private fun setupTapLogic(view: View) {
-        val ivTortoise = view.findViewById<ImageView>(R.id.ivTapTortoise)
-        
-        ivTortoise.setOnClickListener {
-            if (!isGameOver) {
-                onPointScored()
-                
-                val maxX = gameStage.width - ivTortoise.width
-                val maxY = gameStage.height - ivTortoise.height
-                
-                if (maxX > 0 && maxY > 0) {
-                    ivTortoise.x = Random.nextInt(maxX).toFloat()
-                    ivTortoise.y = Random.nextInt(maxY).toFloat()
-                }
-
-                it.scaleX = 0.8f
-                it.scaleY = 0.8f
-                it.animate().scaleX(1.1f).scaleY(1.1f).setDuration(100).withEndAction {
-                    it.scaleX = 1.0f
-                    it.scaleY = 1.0f
-                }.start()
             }
         }
     }
@@ -177,30 +182,27 @@ class BattlefieldActivity : AppCompatActivity() {
         val etAnswer = view.findViewById<EditText>(R.id.etMathAnswer)
         val btnSubmit = view.findViewById<Button>(R.id.btnSubmitAnswer)
         
+        // FIX: Remove "?" when typing
+        etAnswer.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && etAnswer.text.toString() == "?") etAnswer.setText("")
+        }
+
         fun generateProblem() {
             val a = Random.nextInt(1, 20)
             val b = Random.nextInt(1, 10)
-            val operator = listOf("+", "-", "*").random()
-            
-            mathAnswer = when (operator) {
-                "+" -> a + b
-                "-" -> a - b
-                "*" -> a * b
-                else -> a + b
-            }
-            
-            tvQuestion.text = "$a $operator $b = ?"
+            val op = listOf("+", "-").random()
+            mathAnswer = if (op == "+") a + b else a - b
+            tvQuestion.text = "$a $op $b = ?"
             etAnswer.text.clear()
         }
         
         generateProblem()
         btnSubmit.setOnClickListener {
-            val input = etAnswer.text.toString().toIntOrNull()
-            if (input == mathAnswer) {
+            if (etAnswer.text.toString().toIntOrNull() == mathAnswer) {
                 onPointScored()
                 generateProblem()
             } else {
-                Toast.makeText(this, "Wrong!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Incorrect!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -209,12 +211,13 @@ class BattlefieldActivity : AppCompatActivity() {
         try {
             val json = assets.open("questions.json").bufferedReader().use { it.readText() }
             val array = JSONArray(json)
+            triviaList.clear()
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
-                val optsArr = obj.getJSONArray("options")
-                val optsList = mutableListOf<String>()
-                for (j in 0 until optsArr.length()) optsList.add(optsArr.getString(j))
-                triviaList.add(Question(obj.getInt("id"), obj.getString("question"), optsList, obj.getString("answer")))
+                val opts = obj.getJSONArray("options")
+                val optList = mutableListOf<String>()
+                for (j in 0 until opts.length()) optList.add(opts.getString(j))
+                triviaList.add(Question(obj.getInt("id"), obj.getString("question"), optList, obj.getString("answer")))
             }
             triviaList.shuffle()
         } catch (e: Exception) { e.printStackTrace() }
@@ -224,13 +227,10 @@ class BattlefieldActivity : AppCompatActivity() {
         if (isGameOver || triviaList.isEmpty()) return
         val q = triviaList[currentQuestionIndex % triviaList.size]
         
-        // FIXED: Using tvTournamentJackpot for the question text (Large White)
-        // and tvLiveQuestion (Small Grey) for a status label.
-        view.findViewById<TextView>(R.id.tvLiveQuestion).text = "QUESTION:"
         view.findViewById<TextView>(R.id.tvTournamentJackpot).text = q.question
         
-        val ids = listOf(R.id.btnOpt1, R.id.btnOpt2, R.id.btnOpt3, R.id.btnOpt4)
-        ids.forEachIndexed { i, id ->
+        val btnIds = listOf(R.id.btnOpt1, R.id.btnOpt2, R.id.btnOpt3, R.id.btnOpt4)
+        btnIds.forEachIndexed { i, id ->
             val btn = view.findViewById<Button>(id)
             btn.text = q.options[i]
             btn.setOnClickListener {
@@ -245,62 +245,46 @@ class BattlefieldActivity : AppCompatActivity() {
         }
     }
 
-    private fun onPointScored() {
-        if (isGameOver) return
-        myScore++
-        pbMyProgress.progress = myScore
-        tvMyScoreLabel.text = "YOU: $myScore"
-        
-        val key = if (isCreator) "player1_score" else "player2_score"
-        roomId?.let { db.child("p2p_lobby").child(it).child(key).setValue(myScore) }
-
-        if (myScore >= 100) endGame()
-    }
-
     private fun endGame() {
         if (isGameOver) return
         isGameOver = true
         gameStage.visibility = View.GONE
         tvStatus.visibility = View.VISIBLE
         
-        when {
-            myScore > opponentScore -> {
-                tvStatus.text = "VICTORY! 🏆\nPRIZE ADDED"
-                tvStatus.setTextColor(Color.GREEN)
-                payWinner(auth.currentUser!!.uid)
-            }
-            myScore < opponentScore -> {
-                tvStatus.text = "DEFEAT! 🐢\nTRY AGAIN"
-                tvStatus.setTextColor(Color.RED)
-            }
-            else -> {
-                tvStatus.text = "DRAW! 🤝\nREFUNDED"
-                tvStatus.setTextColor(Color.YELLOW)
-                payWinner(auth.currentUser!!.uid, isDraw = true)
+        if (roomType == "tournament") {
+            tvStatus.text = "TOURNAMENT OVER!\nSCORE: $myScore"
+            // No instant payout for tournaments; admin settles later.
+        } else {
+            when {
+                myScore > opponentScore -> {
+                    tvStatus.text = "VICTORY! 🏆"
+                    payWinner(auth.uid!!)
+                }
+                myScore < opponentScore -> tvStatus.text = "DEFEAT! 🐢"
+                else -> {
+                    tvStatus.text = "DRAW! 🤝"
+                    payWinner(auth.uid!!, true)
+                }
             }
         }
     }
 
     private fun payWinner(uid: String, isDraw: Boolean = false) {
-        val prize = if (isDraw) stakeAmount else (stakeAmount * 2) * 0.75
-        
+        val prize = if (isDraw) stakeAmount else (stakeAmount * 2) * 0.90
         db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
             override fun doTransaction(data: MutableData): Transaction.Result {
-                val current = data.getValue(Double::class.java) ?: 0.0
-                data.value = current + prize
+                data.value = (data.getValue(Double::class.java) ?: 0.0) + prize
                 return Transaction.success(data)
             }
-            override fun onComplete(err: DatabaseError?, comm: Boolean, snap: DataSnapshot?) {
-                if (comm && isCreator) cleanupRoom()
+            override fun onComplete(e: DatabaseError?, c: Boolean, s: DataSnapshot?) {
+                if (c && isCreator) cleanup()
             }
         })
     }
 
-    private fun cleanupRoom() {
+    private fun cleanup() {
         roomId?.let { 
-            tvStatus.postDelayed({
-                db.child("p2p_lobby").child(it).removeValue() 
-            }, 5000)
+            tvStatus.postDelayed({ db.child("sync_active").child(it).removeValue() }, 5000)
         }
     }
 }
