@@ -12,15 +12,22 @@ import com.google.firebase.database.*
 import org.json.JSONArray
 import kotlin.random.Random
 
+// 1. DATA CLASS MUST BE HERE (At the top, outside the Activity class)
+data class Question(
+    val id: Int,
+    val question: String,
+    val options: List<String>,
+    val answer: String
+)
+
 class BattlefieldActivity : AppCompatActivity() {
 
     private lateinit var db: DatabaseReference
     private lateinit var auth: FirebaseAuth
     
-    // Logic Variables
     private var roomId: String? = null
     private var gameType: String? = null
-    private var roomType: String = "p2p" // New: p2p, sync, or tournament
+    private var roomType: String = "p2p" 
     private var isCreator: Boolean = false
     private var myScore = 0
     private var opponentScore = 0
@@ -30,7 +37,6 @@ class BattlefieldActivity : AppCompatActivity() {
     private var triviaList = mutableListOf<Question>()
     private var currentQuestionIndex = 0
 
-    // UI Elements
     private lateinit var tvTimer: TextView
     private lateinit var pbMyProgress: ProgressBar
     private lateinit var pbOpponentProgress: ProgressBar
@@ -55,7 +61,6 @@ class BattlefieldActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         db = FirebaseDatabase.getInstance().reference
 
-        // Get data from Intent
         roomId = intent.getStringExtra("ROOM_ID")
         gameType = intent.getStringExtra("GAME_TYPE") ?: "Math Blitz"
         isCreator = intent.getBooleanExtra("IS_CREATOR", false)
@@ -79,7 +84,6 @@ class BattlefieldActivity : AppCompatActivity() {
         pbMyProgress.max = 100 
         pbOpponentProgress.max = 100
         
-        // If Tournament, we might hide the opponent bar or change the label
         if (roomType == "tournament") {
             tvOpponentScoreLabel.text = "TOP SCORE: 0"
         }
@@ -87,8 +91,6 @@ class BattlefieldActivity : AppCompatActivity() {
 
     private fun fetchDataAndSync() {
         val id = roomId ?: return
-        
-        // 1. Determine which Firebase node to watch
         val nodePath = when(roomType) {
             "sync" -> "sync_active/$id"
             "tournament" -> "tournaments/active"
@@ -97,12 +99,10 @@ class BattlefieldActivity : AppCompatActivity() {
         
         val roomRef = db.child(nodePath)
 
-        // 2. Fetch Stake for P2P/Sync
         roomRef.child("stake").get().addOnSuccessListener {
             stakeAmount = it.getValue(Double::class.java) ?: 0.0
         }
 
-        // 3. LISTEN FOR OPPONENT SCORE (The "Sync" Bridge)
         val opponentKey = if (roomType == "tournament") "topScore" 
                          else if (isCreator) "joinerScore" else "creatorScore"
         
@@ -126,8 +126,6 @@ class BattlefieldActivity : AppCompatActivity() {
         tvMyScoreLabel.text = "YOU: $myScore"
         
         val id = roomId ?: return
-        
-        // Determine where to save my score
         val myKey = if (isCreator) "creatorScore" else "joinerScore"
         
         when(roomType) {
@@ -140,7 +138,6 @@ class BattlefieldActivity : AppCompatActivity() {
     }
 
     private fun startCountdown() {
-        // Master Timer (Usually 60s)
         object : CountDownTimer(60000, 1000) { 
             override fun onTick(millisUntilFinished: Long) {
                 val seconds = millisUntilFinished / 1000
@@ -177,12 +174,31 @@ class BattlefieldActivity : AppCompatActivity() {
         }
     }
 
+    // 2. RESTORED MISSING FUNCTION: setupTapLogic
+    private fun setupTapLogic(view: View) {
+        val ivTortoise = view.findViewById<ImageView>(R.id.ivTapTortoise)
+        ivTortoise.setOnClickListener {
+            if (!isGameOver) {
+                onPointScored()
+                val maxX = gameStage.width - ivTortoise.width
+                val maxY = gameStage.height - ivTortoise.height
+                if (maxX > 0 && maxY > 0) {
+                    ivTortoise.x = Random.nextInt(maxX).toFloat()
+                    ivTortoise.y = Random.nextInt(maxY).toFloat()
+                }
+                it.animate().scaleX(1.1f).scaleY(1.1f).setDuration(100).withEndAction {
+                    it.scaleX = 1.0f
+                    it.scaleY = 1.0f
+                }.start()
+            }
+        }
+    }
+
     private fun setupMathLogic(view: View) {
         val tvQuestion = view.findViewById<TextView>(R.id.tvMathProblem)
         val etAnswer = view.findViewById<EditText>(R.id.etMathAnswer)
         val btnSubmit = view.findViewById<Button>(R.id.btnSubmitAnswer)
         
-        // FIX: Remove "?" when typing
         etAnswer.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus && etAnswer.text.toString() == "?") etAnswer.setText("")
         }
@@ -253,7 +269,6 @@ class BattlefieldActivity : AppCompatActivity() {
         
         if (roomType == "tournament") {
             tvStatus.text = "TOURNAMENT OVER!\nSCORE: $myScore"
-            // No instant payout for tournaments; admin settles later.
         } else {
             when {
                 myScore > opponentScore -> {
