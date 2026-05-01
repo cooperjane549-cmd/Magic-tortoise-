@@ -27,7 +27,6 @@ class MarketFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val uid = auth.currentUser?.uid ?: return
 
-        // Fetch user profile data
         db.child("users").child(uid).get().addOnSuccessListener {
             myUsername = it.child("username").value?.toString()
         }
@@ -67,20 +66,21 @@ class MarketFragment : Fragment() {
                     val stake = battle.child("stake").value.toString()
                     val game = battle.child("game").value?.toString() ?: "Trivia Duel"
                     val bUid = battle.key ?: ""
-
-                    val bView = layoutInflater.inflate(R.layout.item_p2p_battle, null)
-                    bView.findViewById<TextView>(R.id.tvBattleTitle).text = "$creator: $game"
-                    bView.findViewById<TextView>(R.id.tvBattleStake).text = "Stake: KES $stake"
-                    bView.findViewById<Button>(R.id.btnJoinBattle).setOnClickListener {
-                        if (bUid != uid && checkProfile()) showJoinBattleGateway(bUid, stake.toDouble(), game)
+                    if (bUid != uid) {
+                        val bView = layoutInflater.inflate(R.layout.item_p2p_battle, null)
+                        bView.findViewById<TextView>(R.id.tvBattleTitle).text = "$creator: $game"
+                        bView.findViewById<TextView>(R.id.tvBattleStake).text = "Stake: KES $stake"
+                        bView.findViewById<Button>(R.id.btnJoinBattle).setOnClickListener {
+                             showJoinBattleGateway(bUid, stake.toDouble(), game)
+                        }
+                        p2pContainer.addView(bView)
                     }
-                    p2pContainer.addView(bView)
                 }
             }
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // LIVE SYNC ARENA LOBBY - This handles showing the cards in the Market
+        // LIVE SYNC ARENA LOBBY
         db.child("sync_lobby").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!isAdded) return
@@ -102,18 +102,12 @@ class MarketFragment : Fragment() {
                         stakeTv.text = "Stake: KES $stake"
 
                         if (cUid == uid) {
-                            // Creator sees a Cancel button
                             actionBtn.text = "CANCEL"
                             actionBtn.setBackgroundColor(Color.RED)
-                            actionBtn.setOnClickListener {
-                                db.child("sync_lobby").child(sId).removeValue()
-                            }
+                            actionBtn.setOnClickListener { db.child("sync_lobby").child(sId).removeValue() }
                         } else {
-                            // Others see a Join button that opens the Pop-up gateway
                             actionBtn.text = "JOIN"
-                            actionBtn.setOnClickListener {
-                                if (checkProfile()) showJoinSyncGateway(sId, stake.toDouble())
-                            }
+                            actionBtn.setOnClickListener { showJoinSyncGateway(sId, stake.toDouble()) }
                         }
                         syncContainer?.addView(sView)
                     }
@@ -136,62 +130,46 @@ class MarketFragment : Fragment() {
         val dialog = MaterialAlertDialogBuilder(requireContext()).setView(view).create()
         val et = view.findViewById<EditText>(R.id.etStakeAmount)
         val sp = view.findViewById<Spinner>(R.id.spinnerGameType)
-        
         sp.visibility = View.GONE
-        et.hint = "Enter Sync Stake (Min 10/-)"
 
         view.findViewById<Button>(R.id.btnPostBattle).setOnClickListener {
             val amt = et.text.toString().toDoubleOrNull() ?: 0.0
             if (amt >= 10.0) {
                 val lobbyId = db.child("sync_lobby").push().key ?: ""
-                val winnings = (amt * 2) * 0.90 // 10% House Cut
-
                 db.child("sync_lobby").child(lobbyId).setValue(mapOf(
                     "creatorUid" to uid,
                     "creatorName" to myUsername,
                     "stake" to amt,
-                    "winnings" to winnings,
                     "status" to "waiting"
                 )).addOnSuccessListener {
                     dialog.dismiss()
-                    Toast.makeText(context, "Challenge Posted!", Toast.LENGTH_SHORT).show()
-                    
-                    // Wait for a partner to join
+                    // Listener for the Creator to enter the activity once joined
                     db.child("sync_lobby").child(lobbyId).child("status").addValueEventListener(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             if (snapshot.value == "active") {
                                 val intent = Intent(context, SyncBattleActivity::class.java)
                                 intent.putExtra("ROOM_ID", lobbyId)
+                                intent.putExtra("IS_CREATOR", true)
+                                intent.putExtra("ROOM_TYPE", "sync")
                                 startActivity(intent)
                             }
                         }
                         override fun onCancelled(error: DatabaseError) {}
                     })
                 }
-            } else {
-                Toast.makeText(context, "Minimum 10/-", Toast.LENGTH_SHORT).show()
             }
         }
         dialog.show()
     }
 
-    // THE POP-UP GATEWAY FOR SYNC
     private fun showJoinSyncGateway(sId: String, stake: Double) {
         val view = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
         val dialog = MaterialAlertDialogBuilder(requireContext()).setView(view).create()
-        
-        // Customizing the existing overlay layout for the Sync message
-        view.findViewById<TextView>(R.id.tvLiveQuestion)?.text = "SECURE P2P SETTLEMENT ARENA"
         view.findViewById<TextView>(R.id.tvTournamentJackpot)?.text = "STAKE: KES $stake"
-        
-        val actionBtn = view.findViewById<Button>(R.id.btnJoinTournamentFinal)
-        actionBtn.text = "CONFIRM & JOIN"
-        actionBtn.setOnClickListener {
+        view.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener {
             handleTransaction(auth.uid!!, stake, "sync_join", sId)
             dialog.dismiss()
         }
-        
-        view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         dialog.show()
     }
 
@@ -205,36 +183,27 @@ class MarketFragment : Fragment() {
             if (snapshot.exists()) {
                 btnAction.text = "ENTER ARENA"
                 btnAction.setOnClickListener { 
-                    startActivity(Intent(context, TournamentActivity::class.java))
+                    startActivity(Intent(context, BattlefieldActivity::class.java).apply {
+                        putExtra("ROOM_TYPE", "tournament")
+                        putExtra("GAME_TYPE", "Tournament")
+                    })
                     dialog.dismiss() 
                 }
             } else {
                 btnAction.text = "JOIN (10/-)"
-                btnAction.setOnClickListener { 
-                    handleTransaction(uid, 10.0, "tournament")
-                    dialog.dismiss() 
-                }
+                btnAction.setOnClickListener { handleTransaction(uid, 10.0, "tournament") }
             }
         }
-        view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         dialog.show()
     }
 
     private fun showJoinBattleGateway(cUid: String, stake: Double, game: String) {
         val view = layoutInflater.inflate(R.layout.layout_tournament_overlay, null)
         val dialog = MaterialAlertDialogBuilder(requireContext()).setView(view).create()
-        val actionBtn = view.findViewById<Button>(R.id.btnJoinTournamentFinal)
-        
-        view.findViewById<TextView>(R.id.tvLiveQuestion)?.text = "BATTLE ARENA: $game"
-        view.findViewById<TextView>(R.id.tvTournamentJackpot)?.text = "STAKE: KES $stake"
-        
-        actionBtn.text = "ACCEPT CHALLENGE"
-        actionBtn.setOnClickListener { 
+        view.findViewById<Button>(R.id.btnJoinTournamentFinal).setOnClickListener { 
             handleTransaction(auth.uid!!, stake, "p2p_join", "$cUid|$game")
             dialog.dismiss() 
         }
-        
-        view.findViewById<ImageButton>(R.id.btnCloseTournament).setOnClickListener { dialog.dismiss() }
         dialog.show()
     }
 
@@ -243,15 +212,11 @@ class MarketFragment : Fragment() {
         val dialog = MaterialAlertDialogBuilder(requireContext()).setView(view).create()
         val et = view.findViewById<EditText>(R.id.etStakeAmount)
         val sp = view.findViewById<Spinner>(R.id.spinnerGameType)
-        
         sp.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, arrayOf("Math Blitz", "Tap Tortoise", "Trivia Duel"))
         
         view.findViewById<Button>(R.id.btnPostBattle).setOnClickListener {
             val amt = et.text.toString().toDoubleOrNull() ?: 0.0
-            if (amt >= 20.0) { 
-                handleTransaction(uid, amt, "p2p_create", sp.selectedItem.toString())
-                dialog.dismiss() 
-            }
+            if (amt >= 20.0) { handleTransaction(uid, amt, "p2p_create", sp.selectedItem.toString()); dialog.dismiss() }
         }
         dialog.show()
     }
@@ -269,39 +234,37 @@ class MarketFragment : Fragment() {
                     when (type) {
                         "tournament" -> {
                             db.child("tournaments").child("active").child("players").child(uid).setValue(true)
-                            startActivity(Intent(context, TournamentActivity::class.java))
+                            startActivity(Intent(context, BattlefieldActivity::class.java).apply {
+                                putExtra("ROOM_TYPE", "tournament")
+                                putExtra("GAME_TYPE", "Tournament")
+                            })
                         }
                         "sync_join" -> {
-                            // Transition the lobby from 'waiting' to 'active'
-                            db.child("sync_lobby").child(extra).child("status").setValue("active")
-                            db.child("sync_lobby").child(extra).child("joinerUid").setValue(uid)
-                            db.child("sync_lobby").child(extra).child("joinerName").setValue(myUsername)
+                            // Initialize sync_active node so both bars work
+                            db.child("sync_active").child(extra).setValue(mapOf(
+                                "creatorScore" to 0, "joinerScore" to 0, "timeLeft" to 60
+                            ))
+                            db.child("sync_lobby").child(extra).updateChildren(mapOf("status" to "active", "joinerUid" to uid))
                             
-                            // Launch the settlement arena
-                            val intent = Intent(context, SyncBattleActivity::class.java)
-                            intent.putExtra("ROOM_ID", extra)
-                            startActivity(intent)
+                            startActivity(Intent(context, SyncBattleActivity::class.java).apply {
+                                putExtra("ROOM_ID", extra)
+                                putExtra("IS_CREATOR", false)
+                                putExtra("ROOM_TYPE", "sync")
+                            })
                         }
                         "p2p_create" -> {
-                            db.child("p2p_lobby").child(uid).setValue(mapOf("name" to myUsername, "stake" to amount, "game" to extra))
+                            db.child("p2p_lobby").child(uid).setValue(mapOf("name" to myUsername, "stake" to amount, "game" to extra, "player1_score" to 0, "player2_score" to 0))
                             startActivity(Intent(context, BattlefieldActivity::class.java).apply { 
-                                putExtra("ROOM_ID", uid)
-                                putExtra("GAME_TYPE", extra)
-                                putExtra("IS_CREATOR", true) 
+                                putExtra("ROOM_ID", uid); putExtra("GAME_TYPE", extra); putExtra("IS_CREATOR", true); putExtra("ROOM_TYPE", "p2p") 
                             })
                         }
                         "p2p_join" -> {
                             val p = extra.split("|")
-                            db.child("p2p_lobby").child(p[0]).removeValue()
                             startActivity(Intent(context, BattlefieldActivity::class.java).apply { 
-                                putExtra("ROOM_ID", p[0])
-                                putExtra("GAME_TYPE", p[1])
-                                putExtra("IS_CREATOR", false) 
+                                putExtra("ROOM_ID", p[0]); putExtra("GAME_TYPE", p[1]); putExtra("IS_CREATOR", false); putExtra("ROOM_TYPE", "p2p") 
                             })
                         }
                     }
-                } else {
-                    Toast.makeText(context, "Insufficient Balance", Toast.LENGTH_SHORT).show()
                 }
             }
         })
