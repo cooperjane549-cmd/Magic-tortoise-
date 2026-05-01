@@ -68,12 +68,13 @@ class DashboardFragment : Fragment() {
                 override fun onCancelled(p0: DatabaseError) {}
             })
 
-            // Logic 1: Start the 2-hour window timer
             calculateAndStartTimer(tvCountdown)
         }
 
         loadAd()
         btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
+        
+        // Instead of launching Tournament directly, we go to Market to pay first
         btnJoinTournament?.setOnClickListener {
             val activityView = activity?.window?.decorView
             val bottomNav = findBottomNav(activityView)
@@ -84,7 +85,6 @@ class DashboardFragment : Fragment() {
         cardScratch?.setOnClickListener { checkDailyLimit("lastScratch") { showScratchDialog() } }
     }
 
-    // NEW LOGIC: Calculate exact time until next even hour
     private fun calculateAndStartTimer(tvTimer: TextView?) {
         val now = Calendar.getInstance()
         val nextHour = if (now.get(Calendar.HOUR_OF_DAY) % 2 == 0) {
@@ -113,12 +113,11 @@ class DashboardFragment : Fragment() {
             override fun onFinish() {
                 tvTimer?.text = "Checking Arena..."
                 checkTournamentViability()
-                calculateAndStartTimer(tvTimer) // Cycle to the next 2 hours
+                calculateAndStartTimer(tvTimer)
             }
         }.start()
     }
 
-    // NEW LOGIC: Check if at least 2 players joined
     private fun checkTournamentViability() {
         val uid = auth.currentUser?.uid ?: return
         val tournamentRef = db.child("tournaments").child("active")
@@ -131,13 +130,17 @@ class DashboardFragment : Fragment() {
 
             if (participants.hasChild(uid)) {
                 if (count >= 2) {
-                    // Start the real game
-                    startActivity(Intent(context, TournamentActivity::class.java))
+                    // FIXED: Launching BattlefieldActivity instead of TournamentActivity
+                    val intent = Intent(context, BattlefieldActivity::class.java).apply {
+                        putExtra("ROOM_TYPE", "tournament")
+                        putExtra("GAME_TYPE", "Tournament")
+                        putExtra("ROOM_ID", "active")
+                    }
+                    startActivity(intent)
                 } else {
-                    // Only 1 player joined. Refund and clear room.
                     refundUser(uid)
                     tournamentRef.removeValue() 
-                    Toast.makeText(context, "Tournament canceled: Need at least 2 players. 10.00 Refunded.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Cancelled: Need 2+ players. Refunded.", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -158,8 +161,7 @@ class DashboardFragment : Fragment() {
         val uid = auth.currentUser?.uid ?: return
         db.child("users").child(uid).child(nodeName).get().addOnSuccessListener { snapshot ->
             val lastTime = snapshot.getValue(Long::class.java) ?: 0L
-            val currentTime = System.currentTimeMillis()
-            if (currentTime >= (lastTime + 86400000L)) {
+            if (System.currentTimeMillis() >= (lastTime + 86400000L)) {
                 onAvailable()
             } else {
                 Toast.makeText(context, "Tortoise says: Try again in 24 hours!", Toast.LENGTH_SHORT).show()
