@@ -1,295 +1,84 @@
-package co.ke.magictortoise
+package co.ke.magictortoise.fragments
 
-import android.content.Intent
 import android.os.Bundle
-import android.os.CountDownTimer
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
-import androidx.appcompat.app.AlertDialog
-import androidx.cardview.widget.CardView
+import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
-import com.google.android.gms.ads.*
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import co.ke.magictortoise.R
+import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.unity3d.ads.IUnityAdsShowListener
-import com.unity3d.ads.UnityAds
-import com.google.android.material.bottomnavigation.BottomNavigationView
-import java.util.*
-import kotlin.random.Random
 
 class DashboardFragment : Fragment() {
 
-    private var rewardedAd: RewardedAd? = null
-    private var isAdLoading = false
-    private val auth = FirebaseAuth.getInstance()
-    private val db = FirebaseDatabase.getInstance().reference
-    
-    private val AD_UNIT_ID = "ca-app-pub-2344867686796379/1476405830"
-    private val UNITY_REWARDED_ID = "Rewarded_Android"
-    private var countdownTimer: CountDownTimer? = null
+    private lateinit var database: DatabaseReference
+    private lateinit var tvBalance: TextView
+    private var currentBalance: Double = 0.0
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.fragment_dashboard, container, false)
-    }
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.fragment_dashboard, container, false)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) return view
 
-        val tvBalance = view.findViewById<TextView>(R.id.tvBalance)
-        val tvAdProgress = view.findViewById<TextView>(R.id.tvAdProgress)
-        val adProgressBar = view.findViewById<ProgressBar>(R.id.adProgressBar)
-        val btnWatchAd = view.findViewById<Button>(R.id.btnWatchAd)
-        val tvCountdown = view.findViewById<TextView>(R.id.tvCountdown)
-        val tvLiveTicker = view.findViewById<TextView>(R.id.tvLiveTicker)
-        val btnJoinTournament = view.findViewById<Button>(R.id.btnJoinTournament)
-        val cardSpin = view.findViewById<CardView>(R.id.card_daily_spin)
-        val cardScratch = view.findViewById<CardView>(R.id.card_scratch)
+        database = FirebaseDatabase.getInstance().reference
+        tvBalance = view.findViewById(R.id.tv_dashboard_balance)
 
-        tvLiveTicker?.isSelected = true 
-
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            val uid = currentUser.uid
-            
-            db.child("users").child(uid).addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (!isAdded) return
-                    val balance = snapshot.child("balance").getValue(Double::class.java) ?: 0.0
-                    val adCycle = snapshot.child("adCycle").getValue(Int::class.java) ?: 0
-                    
-                    tvBalance?.text = String.format("%.2f", balance)
-                    tvAdProgress?.text = "Target: $adCycle/35"
-                    adProgressBar?.progress = adCycle
-                }
-                override fun onCancelled(p0: DatabaseError) {}
-            })
-
-            calculateAndStartTimer(tvCountdown)
-        }
-
-        loadAd()
-        btnWatchAd?.setOnClickListener { handleAdsWaterfall() }
-        
-        // Instead of launching Tournament directly, we go to Market to pay first
-        btnJoinTournament?.setOnClickListener {
-            val activityView = activity?.window?.decorView
-            val bottomNav = findBottomNav(activityView)
-            bottomNav?.selectedItemId = R.id.nav_market
-        }
-
-        cardSpin?.setOnClickListener { checkDailyLimit("lastSpin") { showSpinDialog() } }
-        cardScratch?.setOnClickListener { checkDailyLimit("lastScratch") { showScratchDialog() } }
-    }
-
-    private fun calculateAndStartTimer(tvTimer: TextView?) {
-        val now = Calendar.getInstance()
-        val nextHour = if (now.get(Calendar.HOUR_OF_DAY) % 2 == 0) {
-            now.get(Calendar.HOUR_OF_DAY) + 2
-        } else {
-            now.get(Calendar.HOUR_OF_DAY) + 1
-        }
-
-        val target = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, nextHour)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-        }
-
-        val millisUntilStart = target.timeInMillis - now.timeInMillis
-
-        countdownTimer?.cancel()
-        countdownTimer = object : CountDownTimer(millisUntilStart, 1000) {
-            override fun onTick(ms: Long) {
-                val h = (ms / 3600000)
-                val m = (ms / 60000) % 60
-                val s = (ms / 1000) % 60
-                tvTimer?.text = String.format("Next Arena: %02d:%02d:%02d", h, m, s)
+        // Listen for Balance Updates
+        val balanceRef = database.child("users").child(userId).child("balance")
+        balanceRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                currentBalance = snapshot.getValue(Double::class.java) ?: 0.0
+                tvBalance.text = String.format("KES %.2f", currentBalance)
             }
-
-            override fun onFinish() {
-                tvTimer?.text = "Checking Arena..."
-                checkTournamentViability()
-                calculateAndStartTimer(tvTimer)
-            }
-        }.start()
-    }
-
-    private fun checkTournamentViability() {
-        val uid = auth.currentUser?.uid ?: return
-        val tournamentRef = db.child("tournaments").child("active")
-
-        tournamentRef.get().addOnSuccessListener { snapshot ->
-            if (!isAdded) return@addOnSuccessListener
-            
-            val participants = snapshot.child("players")
-            val count = participants.childrenCount.toInt()
-
-            if (participants.hasChild(uid)) {
-                if (count >= 2) {
-                    // FIXED: Launching BattlefieldActivity instead of TournamentActivity
-                    val intent = Intent(context, BattlefieldActivity::class.java).apply {
-                        putExtra("ROOM_TYPE", "tournament")
-                        putExtra("GAME_TYPE", "Tournament")
-                        putExtra("ROOM_ID", "active")
-                    }
-                    startActivity(intent)
-                } else {
-                    refundUser(uid)
-                    tournamentRef.removeValue() 
-                    Toast.makeText(context, "Cancelled: Need 2+ players. Refunded.", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-    }
-
-    private fun refundUser(uid: String) {
-        db.child("users").child(uid).child("balance").runTransaction(object : Transaction.Handler {
-            override fun doTransaction(data: MutableData): Transaction.Result {
-                val current = data.getValue(Double::class.java) ?: 0.0
-                data.value = current + 10.0 
-                return Transaction.success(data)
-            }
-            override fun onComplete(a: DatabaseError?, b: Boolean, c: DataSnapshot?) {}
+            override fun onCancelled(error: DatabaseError) {}
         })
-    }
 
-    private fun checkDailyLimit(nodeName: String, onAvailable: () -> Unit) {
-        val uid = auth.currentUser?.uid ?: return
-        db.child("users").child(uid).child(nodeName).get().addOnSuccessListener { snapshot ->
-            val lastTime = snapshot.getValue(Long::class.java) ?: 0L
-            if (System.currentTimeMillis() >= (lastTime + 86400000L)) {
-                onAvailable()
-            } else {
-                Toast.makeText(context, "Tortoise says: Try again in 24 hours!", Toast.LENGTH_SHORT).show()
-            }
+        // Setup Data Buttons
+        view.findViewById<MaterialCardView>(R.id.btn_buy_20mb).setOnClickListener {
+            handlePurchase(20, 10.0, userId)
         }
-    }
-
-    private fun showSpinDialog() {
-        val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_spin_wheel, null)
-        builder.setView(dialogView)
-        val dialog = builder.create()
-        val wheelImage = dialogView.findViewById<ImageView>(R.id.ivWheel)
-        val btnSpinAction = dialogView.findViewById<Button>(R.id.btnSpinAction)
-
-        btnSpinAction?.setOnClickListener {
-            btnSpinAction.isEnabled = false
-            val sectorIndex = Random.nextInt(16) 
-            val targetRotation = (360f * 10) + (360f - (sectorIndex * 22.5f))
-
-            wheelImage?.animate()?.rotationBy(targetRotation)?.setDuration(5000)?.withEndAction {
-                val prizes = listOf(0.0, 0.0, 0.50, 0.10, 0.20, 0.50, 0.20, 0.10, 0.05, 0.01, 0.01, 0.05, 0.05, 0.10, 0.0, 0.10)
-                val win = prizes[sectorIndex]
-                updateUserBalance(win, "lastSpin")
-                if (win > 0) Toast.makeText(context, "You won KES $win!", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
-            }?.start()
+        view.findViewById<MaterialCardView>(R.id.btn_buy_250mb).setOnClickListener {
+            handlePurchase(250, 50.0, userId)
         }
-        dialog.show()
-    }
-
-    private fun showScratchDialog() {
-        val builder = AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_scratch_card, null)
-        builder.setView(dialogView)
-        val dialog = builder.create()
-        val btnClaim = dialogView.findViewById<Button>(R.id.btnClaimScratch)
-        val tvResult = dialogView.findViewById<TextView>(R.id.tvScratchResult)
-        val scratchOverlay = dialogView.findViewById<View>(R.id.scratchOverlay)
-        val prize = 0.05
-        tvResult?.text = "KES $prize"
-
-        scratchOverlay?.setOnTouchListener { v, event ->
-            if (event.action == android.view.MotionEvent.ACTION_MOVE) {
-                v.alpha -= 0.05f
-                if (v.alpha <= 0.1f) {
-                    v.visibility = View.GONE
-                    btnClaim?.visibility = View.VISIBLE
-                }
-            }
-            true
+        view.findViewById<MaterialCardView>(R.id.btn_buy_1gb).setOnClickListener {
+            handlePurchase(1000, 180.0, userId)
         }
-        btnClaim?.setOnClickListener {
-            updateUserBalance(prize, "lastScratch")
-            dialog.dismiss()
+
+        // Ad Button (Example)
+        view.findViewById<MaterialCardView>(R.id.btn_watch_ad).setOnClickListener {
+            Toast.makeText(context, "Loading Ad...", Toast.LENGTH_SHORT).show()
+            // Your AdMob Logic Here
         }
-        dialog.show()
+
+        return view
     }
 
-    private fun updateUserBalance(amount: Double, timestampNode: String) {
-        val uid = auth.currentUser?.uid ?: return
-        val updates = hashMapOf<String, Any>(
-            "balance" to ServerValue.increment(amount),
-            timestampNode to ServerValue.TIMESTAMP
-        )
-        db.child("users").child(uid).updateChildren(updates)
-    }
+    private fun handlePurchase(mb: Int, price: Double, userId: String) {
+        if (currentBalance >= price) {
+            // 1. Deduct Balance
+            val newBalance = currentBalance - price
+            database.child("users").child(userId).child("balance").setValue(newBalance)
 
-    private fun handleAdsWaterfall() {
-        val uid = auth.currentUser?.uid ?: return
-        if (rewardedAd != null) {
-            rewardedAd?.show(requireActivity()) { updateAdReward(uid) }
-        } else {
-            showUnityAd(uid)
-        }
-    }
-
-    private fun updateAdReward(uid: String) {
-        val userRef = db.child("users").child(uid)
-        userRef.child("adCycle").get().addOnSuccessListener { snapshot ->
-            val currentCycle = snapshot.getValue(Int::class.java) ?: 0
-            val nextCycle = if (currentCycle >= 35) 1 else currentCycle + 1
-            val updates = hashMapOf<String, Any>(
-                "balance" to ServerValue.increment(0.02),
-                "adCycle" to nextCycle
+            // 2. Create a request for your Firebase Cloud Function to call the Data API
+            val requestRef = database.child("data_requests").push()
+            val requestData = mapOf(
+                "userId" to userId,
+                "amountMB" to mb,
+                "status" to "pending",
+                "phone" to FirebaseAuth.getInstance().currentUser?.phoneNumber // Ensure user has phone
             )
-            userRef.updateChildren(updates).addOnCompleteListener { task ->
-                if (task.isSuccessful && isAdded) {
-                    Toast.makeText(context, "KES 0.02 Added!", Toast.LENGTH_SHORT).show()
-                    loadAd()
-                }
-            }
+            requestRef.setValue(requestData)
+
+            Toast.makeText(context, "Purchase Successful! Injecting $mb MB...", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(context, "Insufficient Balance. Convert Airtime to add cash!", Toast.LENGTH_LONG).show()
         }
-    }
-
-    private fun findBottomNav(view: View?): BottomNavigationView? {
-        if (view is BottomNavigationView) return view
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                val result = findBottomNav(view.getChildAt(i))
-                if (result != null) return result
-            }
-        }
-        return null
-    }
-
-    private fun loadAd() {
-        if (isAdLoading || context == null) return
-        isAdLoading = true
-        RewardedAd.load(requireContext(), AD_UNIT_ID, AdRequest.Builder().build(), object : RewardedAdLoadCallback() {
-            override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad; isAdLoading = false }
-            override fun onAdFailedToLoad(e: LoadAdError) { rewardedAd = null; isAdLoading = false }
-        })
-    }
-
-    private fun showUnityAd(uid: String) {
-        UnityAds.show(requireActivity(), UNITY_REWARDED_ID, object : IUnityAdsShowListener {
-            override fun onUnityAdsShowComplete(p0: String, state: UnityAds.UnityAdsShowCompletionState) {
-                if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) updateAdReward(uid)
-            }
-            override fun onUnityAdsShowFailure(p0: String, p1: UnityAds.UnityAdsShowError, p2: String) { loadAd() }
-            override fun onUnityAdsShowStart(p0: String) {}
-            override fun onUnityAdsShowClick(p0: String) {}
-        })
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        countdownTimer?.cancel()
     }
 }
