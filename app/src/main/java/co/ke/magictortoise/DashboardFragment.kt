@@ -30,7 +30,7 @@ class DashboardFragment : Fragment() {
     private var currentBalance: Double = 0.0
     private var mRewardedAd: RewardedAd? = null
     
-    // Default prices (Overridden by Firebase Remote Config)
+    // FIXED: Initialized with default values so they are never 0.0 at launch
     private var priceDaily: Double = 20.0
     private var priceHourly: Double = 15.0
     private var priceHeavy: Double = 99.0
@@ -50,18 +50,22 @@ class DashboardFragment : Fragment() {
         loadNativeAd(view)
         loadRewardedAd()
 
-        // Bundle Purchase Listeners
+        // Feature: 300MB Daily Purchase
         view.findViewById<MaterialCardView>(R.id.btn_buy_daily)?.setOnClickListener {
             handlePurchase(300, priceDaily, "Daily")
         }
+        
+        // Feature: 1GB Hourly Purchase
         view.findViewById<MaterialCardView>(R.id.btn_buy_hourly)?.setOnClickListener {
             handlePurchase(1000, priceHourly, "1-Hour")
         }
+        
+        // Feature: 4GB Heavy Daily Purchase
         view.findViewById<MaterialCardView>(R.id.btn_buy_heavy)?.setOnClickListener {
             handlePurchase(4000, priceHeavy, "Daily Heavy")
         }
 
-        // Ad Button Listener
+        // Feature: Rewarded Ad Button
         view.findViewById<MaterialCardView>(R.id.btn_watch_ad)?.setOnClickListener {
             showAdAndEarn()
         }
@@ -71,17 +75,25 @@ class DashboardFragment : Fragment() {
 
     private fun setupRemoteConfig() {
         val configSettings = remoteConfigSettings {
-            minimumFetchIntervalInSeconds = 3600 
+            minimumFetchIntervalInSeconds = 0 // Allows real-time price updates for testing
         }
         remoteConfig.setConfigSettingsAsync(configSettings)
         remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                priceDaily = remoteConfig.getDouble("price_daily_300mb")
-                priceHourly = remoteConfig.getDouble("price_hourly_1gb")
-                priceHeavy = remoteConfig.getDouble("price_daily_4gb")
-                adRewardAmount = remoteConfig.getDouble("ad_reward_value")
+                // Safely update prices from Firebase if they exist
+                val d = remoteConfig.getDouble("price_daily_300mb")
+                if (d > 0) priceDaily = d
                 
-                // Update the button text to show the current reward rate
+                val h = remoteConfig.getDouble("price_hourly_1gb")
+                if (h > 0) priceHourly = h
+                
+                val hv = remoteConfig.getDouble("price_daily_4gb")
+                if (hv > 0) priceHeavy = hv
+                
+                val rw = remoteConfig.getDouble("ad_reward_value")
+                if (rw > 0) adRewardAmount = rw
+                
+                // Refresh UI text with new values
                 tvAdRewardText.text = String.format("WATCH AD & EARN KES %.2f", adRewardAmount)
             }
         }
@@ -100,12 +112,11 @@ class DashboardFragment : Fragment() {
     }
 
     private fun loadNativeAd(view: View) {
-        // Using your Native Ad Unit ID: ca-app-pub-2344867686796379/2582924164
         val adLoader = AdLoader.Builder(requireContext(), "ca-app-pub-2344867686796379/2582924164") 
             .forNativeAd { nativeAd ->
                 val adView = layoutInflater.inflate(R.layout.layout_native_ad, null) as NativeAdView
                 
-                // Register Components for Google Validation
+                // Feature: Full Native Mapping (Required for AdMob Compliance)
                 adView.headlineView = adView.findViewById(R.id.ad_headline)
                 (adView.headlineView as TextView).text = nativeAd.headline
 
@@ -132,7 +143,6 @@ class DashboardFragment : Fragment() {
             }
             .withAdListener(object : AdListener() {
                 override fun onAdFailedToLoad(adError: LoadAdError) {
-                    // Hide container if ad doesn't load to keep UI clean
                     view.findViewById<FrameLayout>(R.id.native_ad_container)?.visibility = View.GONE
                 }
             })
@@ -143,7 +153,6 @@ class DashboardFragment : Fragment() {
 
     private fun loadRewardedAd() {
         val adRequest = AdRequest.Builder().build()
-        // Your Rewarded Ad ID: ca-app-pub-2344867686796379/1476405830
         RewardedAd.load(requireContext(), "ca-app-pub-2344867686796379/1476405830", adRequest, object : RewardedAdLoadCallback() {
             override fun onAdFailedToLoad(adError: LoadAdError) {
                 mRewardedAd = null
@@ -158,10 +167,9 @@ class DashboardFragment : Fragment() {
         if (mRewardedAd != null) {
             mRewardedAd?.show(requireActivity()) { _ ->
                 val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@show
-                // Update balance with the 0.02 KES reward
                 database.child("users").child(userId).child("balance").setValue(currentBalance + adRewardAmount)
                 Toast.makeText(context, "Earned KES $adRewardAmount", Toast.LENGTH_SHORT).show()
-                loadRewardedAd() // Pre-load next
+                loadRewardedAd() 
             }
         } else {
             Toast.makeText(context, "Ad loading... Please wait.", Toast.LENGTH_SHORT).show()
@@ -170,7 +178,12 @@ class DashboardFragment : Fragment() {
     }
 
     private fun handlePurchase(mb: Int, price: Double, type: String) {
-        // Safe Confirmation
+        // Feature: Safety Check to prevent 0.0 charges
+        if (price <= 0.0) {
+            Toast.makeText(context, "Syncing prices, try again...", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val builder = AlertDialog.Builder(requireContext())
         builder.setTitle("Confirm Bundle Purchase")
         builder.setMessage("Purchase $mb MB ($type) for KES $price?")
@@ -185,10 +198,9 @@ class DashboardFragment : Fragment() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         if (currentBalance >= price) {
             val newBalance = currentBalance - price
-            // Deduct first
             database.child("users").child(userId).child("balance").setValue(newBalance)
                 .addOnSuccessListener {
-                    // Create pending request for Africa's Talking API
+                    // Feature: Africa's Talking Pending Request Logging
                     val request = mapOf(
                         "mb" to mb, 
                         "type" to type, 
@@ -200,7 +212,7 @@ class DashboardFragment : Fragment() {
                     Toast.makeText(context, "Success! $mb MB requested.", Toast.LENGTH_LONG).show()
                 }
         } else {
-            Toast.makeText(context, "Insufficient Balance. Watch ads or deposit!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Insufficient Balance", Toast.LENGTH_SHORT).show()
         }
     }
 }
