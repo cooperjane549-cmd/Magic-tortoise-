@@ -7,6 +7,7 @@ import androidx.fragment.app.Fragment
 import co.ke.magictortoise.fragments.DashboardFragment
 import co.ke.magictortoise.fragments.MarketFragment
 import co.ke.magictortoise.fragments.OffersFragment
+import co.ke.magictortoise.fragments.SupportFragment // Added this import
 import com.google.android.gms.ads.MobileAds
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.unity3d.ads.IUnityAdsInitializationListener
@@ -18,8 +19,6 @@ class MainActivity : AppCompatActivity() {
     private val testMode = false 
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Removed the specific theme name to avoid "Unresolved reference"
-        // It will now use whatever is set in your AndroidManifest.xml
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -46,7 +45,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_home -> DashboardFragment()
                 R.id.nav_market -> MarketFragment()
                 R.id.nav_offers -> OffersFragment()
-                // Removed SupportFragment to fix the "Unresolved reference" error
+                R.id.nav_support -> SupportFragment() // Linked the SupportFragment here
                 else -> DashboardFragment()
             }
             loadFragment(fragment)
