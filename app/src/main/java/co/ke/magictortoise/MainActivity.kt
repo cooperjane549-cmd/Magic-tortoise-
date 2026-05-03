@@ -4,16 +4,16 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import co.ke.magictortoise.fragments.DashboardFragment
+import co.ke.magictortoise.fragments.MarketFragment
+import co.ke.magictortoise.fragments.OffersFragment
+// Add this specific import because SupportFragment is in the root folder
+import co.ke.magictortoise.SupportFragment 
+
 import com.google.android.gms.ads.MobileAds
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
-
-// EXPLICIT IMPORTS - If these red-line, your files are in the wrong folder
-import co.ke.magictortoise.DashboardFragment
-import co.ke.magictortoise.MarketFragment
-import co.ke.magictortoise.OffersFragment
-import co.ke.magictortoise.SupportFragment
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,16 +24,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1. Initialize Ads
+        // 1. Initialize Ad Systems
         MobileAds.initialize(this) {}
         UnityAds.initialize(applicationContext, unityGameID, testMode, object : IUnityAdsInitializationListener {
-            override fun onInitializationComplete() { Log.d("UNITY_ADS", "Unity Complete") }
+            override fun onInitializationComplete() { 
+                Log.d("UNITY_ADS", "Unity Initialization Complete") 
+            }
             override fun onInitializationFailed(error: UnityAds.UnityAdsInitializationError?, message: String?) {
-                Log.e("UNITY_ADS", "Unity Failed: $message")
+                Log.e("UNITY_ADS", "Unity Initialization Failed: $message")
             }
         })
 
-        // 2. Navigation
+        // 2. Navigation Logic
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
 
         if (savedInstanceState == null) {
@@ -45,6 +47,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_home -> DashboardFragment()
                 R.id.nav_market -> MarketFragment()
                 R.id.nav_offers -> OffersFragment()
+                // Now we link the SupportFragment here
                 R.id.nav_support -> SupportFragment()
                 else -> DashboardFragment()
             }
