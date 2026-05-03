@@ -11,14 +11,21 @@
         android:layout_height="wrap_content"
         android:text="ADMIN PANEL"
         android:textColor="#FF0033"
-        android:textSize="24sp"
+        android:textSize="22sp"
         android:textStyle="bold"
-        android:layout_marginBottom="20dp"/>
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pending Approvals (Tasks/Swaps/Data)"
+        android:textColor="#888888"
+        android:textSize="12sp"
+        android:layout_marginBottom="10dp"/>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_admin_list"
+        android:id="@+id/rv_admin_requests"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_height="match_parent" />
 
 </LinearLayout>
