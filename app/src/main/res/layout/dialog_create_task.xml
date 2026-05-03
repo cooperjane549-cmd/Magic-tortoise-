@@ -9,8 +9,26 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Social Media Link"
-        android:textColor="#FFFFFF"
+        android:text="1. INSTRUCTIONS"
+        android:textColor="#FF0033"
+        android:textStyle="bold"
+        android:textSize="12sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pay KES 450 to Till: 3043489 (Magic Tortoise). Your task will go live for 1,200 users after verification."
+        android:textColor="#BBBBBB"
+        android:textSize="13sp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2. SOCIAL MEDIA LINK"
+        android:textColor="#FF0033"
+        android:textStyle="bold"
         android:textSize="12sp" />
 
     <EditText
@@ -21,23 +39,25 @@
         android:textColor="#FFFFFF"
         android:textColorHint="#555555"
         android:backgroundTint="#FF0033"
-        android:inputType="textUri" />
+        android:inputType="textUri"
+        android:layout_marginBottom="16dp"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="M-Pesa Transaction Code"
-        android:textColor="#FFFFFF"
+        android:text="3. PAYMENT VERIFICATION"
+        android:textColor="#FF0033"
+        android:textStyle="bold"
         android:textSize="12sp" />
 
     <EditText
         android:id="@+id/et_payment_ref"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:hint="e.g. RDK2HJK98"
+        android:hint="Enter M-Pesa Transaction Code"
         android:textColor="#FFFFFF"
         android:textColorHint="#555555"
         android:backgroundTint="#FF0033"
         android:textAllCaps="true" />
+
 </LinearLayout>
