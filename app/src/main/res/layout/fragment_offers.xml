@@ -1,143 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView 
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
-    android:padding="16dp">
+    android:background="#090909"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="20dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="TOP UP ACCOUNT"
-            android:textColor="#FFD700"
+            android:text="EARN EXTRA"
+            android:textColor="#FF0033"
+            android:textSize="26sp"
             android:textStyle="bold"
+            android:letterSpacing="0.1"
             android:layout_marginBottom="8dp"/>
 
-        <androidx.cardview.widget.CardView
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Complete tasks to boost your balance."
+            android:textColor="#888888"
+            android:textSize="14sp"
+            android:layout_marginBottom="24dp"/>
+
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardBackgroundColor="#1A1A1A"
+            app:cardBackgroundColor="#121212"
+            app:cardCornerRadius="16dp"
+            app:strokeColor="#FF0033"
+            app:strokeWidth="1dp"
             android:layout_marginBottom="20dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Secure Payment via PesaPal"
-                    android:textColor="#888"
-                    android:textSize="12sp" />
-
-                <Button
-                    android:id="@+id/btnDeposit"
-                    android:layout_width="match_parent"
-                    android:layout_height="55dp"
-                    android:text="DEPOSIT NOW"
-                    android:backgroundTint="#FFD700"
-                    android:textColor="#000"
-                    android:textStyle="bold"
-                    android:layout_marginTop="10dp"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="WITHDRAW CASH"
-            android:textColor="#FFD700"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardBackgroundColor="#1A1A1A"
-            android:layout_marginBottom="20dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Withdrawals processed to M-Pesa"
-                    android:textColor="#888"
-                    android:textSize="12sp" />
-
-                <Button
-                    android:id="@+id/btnWithdraw"
-                    android:layout_width="match_parent"
-                    android:layout_height="55dp"
-                    android:text="REQUEST WITHDRAWAL"
-                    android:backgroundTint="#333333"
-                    android:textColor="#FFF"
-                    android:layout_marginTop="10dp"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="REFER &amp; EARN"
-            android:textColor="#FFD700"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardBackgroundColor="#1A1A1A">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:gravity="center">
-
-                <TextView
-                    android:id="@+id/tvReferralCode"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="CODE: ------"
+                    android:text="Refer a Friend"
                     android:textColor="#FFFFFF"
-                    android:textSize="22sp"
-                    android:textStyle="bold" />
+                    android:textSize="18sp"
+                    android:textStyle="bold"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Get 0.50/- when they deposit 20/-"
-                    android:textColor="#888"
-                    android:textSize="12sp"
-                    android:layout_marginTop="5dp"/>
+                    android:text="Earn KES 5.00 for every friend who joins and completes their first airtime swap."
+                    android:textColor="#888888"
+                    android:textSize="13sp"
+                    android:layout_marginTop="4dp"/>
 
-                <Button
-                    android:id="@+id/btnInvite"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_share_referral"
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:text="INVITE FRIENDS"
-                    android:backgroundTint="#FFD700"
-                    android:textColor="#000"
-                    android:layout_marginTop="15dp"/>
+                    android:layout_height="55dp"
+                    android:text="SHARE REFERRAL LINK"
+                    android:backgroundTint="#FF0033"
+                    android:textColor="#FFFFFF"
+                    android:layout_marginTop="16dp"
+                    app:cornerRadius="12dp"/>
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SOCIAL TASKS"
+            android:textColor="#FF0033"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"/>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/task_tiktok"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#121212"
+            app:cardCornerRadius="12dp"
+            android:layout_marginBottom="12dp">
+            <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp">
+                <TextView android:id="@+id/txt_tt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Follow on TikTok" android:textColor="#FFFFFF" android:textStyle="bold"/>
+                <TextView android:layout_below="@id/txt_tt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Reward: KES 2.00" android:textColor="#FF0033" android:textSize="12sp"/>
+                <com.google.android.material.button.MaterialButton android:id="@+id/btn_tiktok" style="@style/Widget.MaterialComponents.Button.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GO" android:textColor="#FFFFFF" android:layout_alignParentRight="true"/>
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/task_telegram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#121212"
+            app:cardCornerRadius="12dp"
+            android:layout_marginBottom="12dp">
+            <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp">
+                <TextView android:id="@+id/txt_tg" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Join Telegram Group" android:textColor="#FFFFFF" android:textStyle="bold"/>
+                <TextView android:layout_below="@id/txt_tg" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Reward: KES 3.00" android:textColor="#FF0033" android:textSize="12sp"/>
+                <com.google.android.material.button.MaterialButton android:id="@+id/btn_telegram" style="@style/Widget.MaterialComponents.Button.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GO" android:textColor="#FFFFFF" android:layout_alignParentRight="true"/>
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
-</ScrollView>
+</androidx.core.widget.NestedScrollView>
