@@ -30,11 +30,11 @@ class DashboardFragment : Fragment() {
     private var currentBalance: Double = 0.0
     private var mRewardedAd: RewardedAd? = null
     
-    // Dynamic Prices
+    // Default prices (Overridden by Firebase Remote Config)
     private var priceDaily: Double = 20.0
     private var priceHourly: Double = 15.0
     private var priceHeavy: Double = 99.0
-    private var adRewardAmount: Double = 0.02 // Protected profit rate
+    private var adRewardAmount: Double = 0.02
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_dashboard, container, false)
@@ -50,7 +50,7 @@ class DashboardFragment : Fragment() {
         loadNativeAd(view)
         loadRewardedAd()
 
-        // Setup Buttons
+        // Bundle Purchase Listeners
         view.findViewById<MaterialCardView>(R.id.btn_buy_daily)?.setOnClickListener {
             handlePurchase(300, priceDaily, "Daily")
         }
@@ -61,7 +61,7 @@ class DashboardFragment : Fragment() {
             handlePurchase(4000, priceHeavy, "Daily Heavy")
         }
 
-        // Ad Button Logic
+        // Ad Button Listener
         view.findViewById<MaterialCardView>(R.id.btn_watch_ad)?.setOnClickListener {
             showAdAndEarn()
         }
@@ -81,7 +81,7 @@ class DashboardFragment : Fragment() {
                 priceHeavy = remoteConfig.getDouble("price_daily_4gb")
                 adRewardAmount = remoteConfig.getDouble("ad_reward_value")
                 
-                // Update UI text for ads dynamically
+                // Update the button text to show the current reward rate
                 tvAdRewardText.text = String.format("WATCH AD & EARN KES %.2f", adRewardAmount)
             }
         }
@@ -100,22 +100,50 @@ class DashboardFragment : Fragment() {
     }
 
     private fun loadNativeAd(view: View) {
-        // Test ID for now to ensure it loads; replace with your Native ID later
-        val adLoader = AdLoader.Builder(requireContext(), "ca-app-pub-3940256099942544/2247696110") 
+        // Using your Native Ad Unit ID: ca-app-pub-2344867686796379/2582924164
+        val adLoader = AdLoader.Builder(requireContext(), "ca-app-pub-2344867686796379/2582924164") 
             .forNativeAd { nativeAd ->
                 val adView = layoutInflater.inflate(R.layout.layout_native_ad, null) as NativeAdView
-                // Map components like Headline/Body/Ad Attribution here
+                
+                // Register Components for Google Validation
+                adView.headlineView = adView.findViewById(R.id.ad_headline)
+                (adView.headlineView as TextView).text = nativeAd.headline
+
+                adView.bodyView = adView.findViewById(R.id.ad_body)
+                (adView.bodyView as TextView).text = nativeAd.body
+
+                adView.callToActionView = adView.findViewById(R.id.ad_call_to_action)
+                (adView.callToActionView as Button).text = nativeAd.callToAction
+
+                adView.iconView = adView.findViewById(R.id.ad_app_icon)
+                if (nativeAd.icon != null) {
+                    adView.iconView?.visibility = View.VISIBLE
+                    (adView.iconView as ImageView).setImageDrawable(nativeAd.icon?.drawable)
+                } else {
+                    adView.iconView?.visibility = View.GONE
+                }
+
                 adView.setNativeAd(nativeAd)
+
                 val container = view.findViewById<FrameLayout>(R.id.native_ad_container)
                 container?.removeAllViews()
                 container?.addView(adView)
-            }.build()
+                container?.visibility = View.VISIBLE
+            }
+            .withAdListener(object : AdListener() {
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    // Hide container if ad doesn't load to keep UI clean
+                    view.findViewById<FrameLayout>(R.id.native_ad_container)?.visibility = View.GONE
+                }
+            })
+            .build()
+        
         adLoader.loadAd(AdRequest.Builder().build())
     }
 
     private fun loadRewardedAd() {
         val adRequest = AdRequest.Builder().build()
-        // Using your specific Ad ID
+        // Your Rewarded Ad ID: ca-app-pub-2344867686796379/1476405830
         RewardedAd.load(requireContext(), "ca-app-pub-2344867686796379/1476405830", adRequest, object : RewardedAdLoadCallback() {
             override fun onAdFailedToLoad(adError: LoadAdError) {
                 mRewardedAd = null
@@ -133,7 +161,7 @@ class DashboardFragment : Fragment() {
                 // Update balance with the 0.02 KES reward
                 database.child("users").child(userId).child("balance").setValue(currentBalance + adRewardAmount)
                 Toast.makeText(context, "Earned KES $adRewardAmount", Toast.LENGTH_SHORT).show()
-                loadRewardedAd() // Prepare the next ad
+                loadRewardedAd() // Pre-load next
             }
         } else {
             Toast.makeText(context, "Ad loading... Please wait.", Toast.LENGTH_SHORT).show()
@@ -142,7 +170,7 @@ class DashboardFragment : Fragment() {
     }
 
     private fun handlePurchase(mb: Int, price: Double, type: String) {
-        // Confirmation Dialog to prevent accidental clicks
+        // Safe Confirmation
         val builder = AlertDialog.Builder(requireContext())
         builder.setTitle("Confirm Bundle Purchase")
         builder.setMessage("Purchase $mb MB ($type) for KES $price?")
@@ -157,10 +185,10 @@ class DashboardFragment : Fragment() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         if (currentBalance >= price) {
             val newBalance = currentBalance - price
-            // Deduct the money from the user's account
+            // Deduct first
             database.child("users").child(userId).child("balance").setValue(newBalance)
                 .addOnSuccessListener {
-                    // Log the request for fulfillment
+                    // Create pending request for Africa's Talking API
                     val request = mapOf(
                         "mb" to mb, 
                         "type" to type, 
@@ -169,10 +197,10 @@ class DashboardFragment : Fragment() {
                         "timestamp" to ServerValue.TIMESTAMP
                     )
                     database.child("data_requests").child(userId).push().setValue(request)
-                    Toast.makeText(context, "Purchase successful!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Success! $mb MB requested.", Toast.LENGTH_LONG).show()
                 }
         } else {
-            Toast.makeText(context, "Insufficient Balance", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Insufficient Balance. Watch ads or deposit!", Toast.LENGTH_SHORT).show()
         }
     }
 }
