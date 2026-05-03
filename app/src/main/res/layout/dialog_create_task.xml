@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#121212">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Social Media Link"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp" />
+
+    <EditText
+        android:id="@+id/et_social_link"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:hint="e.g. tiktok.com/@username"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#555555"
+        android:backgroundTint="#FF0033"
+        android:inputType="textUri" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="M-Pesa Transaction Code"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp" />
+
+    <EditText
+        android:id="@+id/et_payment_ref"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:hint="e.g. RDK2HJK98"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#555555"
+        android:backgroundTint="#FF0033"
+        android:textAllCaps="true" />
+</LinearLayout>
