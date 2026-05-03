@@ -17,8 +17,10 @@ class MarketFragment : Fragment() {
 
     private lateinit var database: DatabaseReference
     private lateinit var etRef: EditText
+    
+    // Configurable IDs
     private val TILL_NUMBER = "3043489"
-    private val CASH_PHONE = "07XXXXXXXX" // Replace this later
+    private val CASH_PHONE = "07XXXXXXXX" // The number where they send airtime/bonga
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_market, container, false)
@@ -26,37 +28,37 @@ class MarketFragment : Fragment() {
         database = FirebaseDatabase.getInstance().reference
         etRef = view.findViewById(R.id.et_payment_ref)
 
-        // Feature 1: Airtime to Cash
+        // Box 1: Airtime to Cash - "Turn Excess Airtime into Real Money"
         view.findViewById<View>(R.id.card_airtime_to_cash).setOnClickListener {
             showInstructionDialog(
                 "Convert Airtime to Cash",
-                "1. Dial *456# or use your SIM toolkit.\n2. Send your airtime to $CASH_PHONE.\n3. After you receive the Safaricom confirmation, copy the message and paste it below."
+                "1. Dial *456# and select 'Transfer Airtime'.\n2. Send airtime to $CASH_PHONE.\n3. Copy the Safaricom confirmation SMS and paste it in the box below to get your cash!"
             )
         }
 
-        // Feature 2: Bonga to Cash
+        // Box 2: Bonga to Cash - "Liquidate Your Points Instantly"
         view.findViewById<View>(R.id.card_bonga_to_cash).setOnClickListener {
             showInstructionDialog(
                 "Convert Bonga to Cash",
-                "1. Dial *126# and select 'Transfer Bonga Points'.\n2. Transfer points to $CASH_PHONE.\n3. Paste the confirmation SMS in the box below to claim your cash."
+                "1. Dial *126# and select 'Transfer Bonga Points'.\n2. Transfer points to $CASH_PHONE.\n3. Paste the confirmation SMS in the box below to claim your cash immediately!"
             )
         }
 
-        // Feature 3: Buy Cheap Airtime
+        // Box 3: Buy Airtime - "Get More for Less (2% Discount)"
         view.findViewById<View>(R.id.card_buy_airtime).setOnClickListener {
             showInstructionDialog(
                 "Buy Discounted Airtime",
-                "1. Pay via M-Pesa to Till Number: $TILL_NUMBER.\n2. You pay 2% less (e.g., pay 98 for 100).\n3. Paste the M-Pesa message below to receive your airtime instantly."
+                "1. Go to M-PESA > Lipa na M-PESA > Buy Goods.\n2. Enter Till Number: $TILL_NUMBER.\n3. You pay 2% less (Pay 98 for 100 Airtime).\n4. Paste the M-PESA message below to receive your airtime."
             )
         }
 
-        // Submit for Verification
+        // Submit Button Logic
         view.findViewById<Button>(R.id.btn_submit_verification).setOnClickListener {
             val code = etRef.text.toString().trim()
             if (code.isNotEmpty()) {
                 submitToFirebase(code)
             } else {
-                Toast.makeText(context, "Please paste your message first", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Please paste your confirmation message first", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -64,7 +66,7 @@ class MarketFragment : Fragment() {
     }
 
     private fun showInstructionDialog(title: String, message: String) {
-        AlertDialog.Builder(requireContext(), R.style.Theme_MaterialComponents_Dialog_Alert)
+        AlertDialog.Builder(requireContext())
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton("I UNDERSTAND") { dialog, _ -> dialog.dismiss() }
@@ -81,15 +83,14 @@ class MarketFragment : Fragment() {
             "timestamp" to ServerValue.TIMESTAMP
         )
 
-        // Push to a node called "verifications"
+        // Saves to 'verifications' node for your manual approval
         database.child("verifications").push().setValue(request)
             .addOnSuccessListener {
                 etRef.text.clear()
-                showInstructionDialog("Success!", "Your request has been sent for manual approval. Check your balance in 5-15 minutes.")
+                Toast.makeText(context, "Success! Your payment is being verified.", Toast.LENGTH_LONG).show()
             }
             .addOnFailureListener { e ->
-                // This shows the actual error from Firebase to help us debug
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Submission failed: ${e.message}", Toast.LENGTH_LONG).show()
             }
     }
 }
