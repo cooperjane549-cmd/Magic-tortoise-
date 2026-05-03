@@ -9,6 +9,12 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
 
+// EXPLICIT IMPORTS - If these red-line, your files are in the wrong folder
+import co.ke.magictortoise.DashboardFragment
+import co.ke.magictortoise.MarketFragment
+import co.ke.magictortoise.OffersFragment
+import co.ke.magictortoise.SupportFragment
+
 class MainActivity : AppCompatActivity() {
 
     private val unityGameID = "6094869"
@@ -30,7 +36,6 @@ class MainActivity : AppCompatActivity() {
         // 2. Navigation
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
 
-        // No imports needed for fragments because they share the same package!
         if (savedInstanceState == null) {
             loadFragment(DashboardFragment())
         }
