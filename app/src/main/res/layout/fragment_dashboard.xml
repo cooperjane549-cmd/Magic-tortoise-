@@ -61,7 +61,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="OKOA-SAFE DATA (DEBT-FREE)"
+            android:text="OKOA-SAFE DATA (BROKER DEALS)"
             android:textColor="#FF0033"
             android:textSize="14sp"
             android:textStyle="bold"
@@ -80,9 +80,9 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/btn_buy_20mb"
-                    android:layout_width="120dp"
-                    android:layout_height="100dp"
+                    android:id="@+id/btn_buy_daily"
+                    android:layout_width="140dp"
+                    android:layout_height="110dp"
                     android:layout_marginEnd="12dp"
                     app:cardBackgroundColor="#121212"
                     app:cardCornerRadius="12dp">
@@ -91,33 +91,36 @@
                         android:layout_height="match_parent"
                         android:gravity="center"
                         android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="20 MB" android:textColor="#FFFFFF" android:textStyle="bold"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KES 10" android:textColor="#FF0033"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="300 MB" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="16sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DAILY" android:textColor="#888888" android:textSize="10sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/tv_price_daily" android:text="KES 20" android:textColor="#FF0033"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/btn_buy_250mb"
-                    android:layout_width="120dp"
-                    android:layout_height="100dp"
+                    android:id="@+id/btn_buy_hourly"
+                    android:layout_width="140dp"
+                    android:layout_height="110dp"
                     android:layout_marginEnd="12dp"
                     app:cardBackgroundColor="#121212"
                     app:cardCornerRadius="12dp">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="250 MB" android:textColor="#FFFFFF" android:textStyle="bold"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KES 50" android:textColor="#FF0033"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1 GB" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="16sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1-HOUR BLAZE" android:textColor="#888888" android:textSize="10sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/tv_price_hourly" android:text="KES 15" android:textColor="#FF0033"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/btn_buy_1gb"
-                    android:layout_width="120dp"
-                    android:layout_height="100dp"
+                    android:id="@+id/btn_buy_heavy"
+                    android:layout_width="140dp"
+                    android:layout_height="110dp"
                     app:cardBackgroundColor="#121212"
                     app:cardCornerRadius="12dp">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1 GB" android:textColor="#FFFFFF" android:textStyle="bold"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KES 180" android:textColor="#FF0033"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4 GB" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="16sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DAILY HEAVY" android:textColor="#888888" android:textSize="10sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/tv_price_heavy" android:text="KES 99" android:textColor="#FF0033"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
@@ -136,9 +139,31 @@
                 android:gravity="center"
                 android:orientation="horizontal">
                 <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_slideshow" app:tint="#FFFFFF"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="WATCH AD &amp; EARN KES 0.10" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginStart="12dp"/>
+                <TextView 
+                    android:id="@+id/tv_ad_reward_text"
+                    android:layout_width="wrap_content" 
+                    android:layout_height="wrap_content" 
+                    android:text="WATCH AD &amp; EARN KES 0.02" 
+                    android:textColor="#FFFFFF" 
+                    android:textStyle="bold" 
+                    android:layout_marginStart="12dp"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FEATURED DEALS"
+            android:textColor="#444444"
+            android:textSize="12sp"
+            android:layout_marginBottom="8dp"/>
+
+        <FrameLayout
+            android:id="@+id/native_ad_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="100dp"
+            android:background="#121212" />
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
