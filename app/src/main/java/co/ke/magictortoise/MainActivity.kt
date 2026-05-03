@@ -4,10 +4,6 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
-import co.ke.magictortoise.fragments.DashboardFragment
-import co.ke.magictortoise.fragments.MarketFragment
-import co.ke.magictortoise.fragments.OffersFragment
-import co.ke.magictortoise.fragments.SupportFragment // Added this import
 import com.google.android.gms.ads.MobileAds
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.unity3d.ads.IUnityAdsInitializationListener
@@ -22,20 +18,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1. Initialize Ad Systems
+        // 1. Initialize Ads
         MobileAds.initialize(this) {}
         UnityAds.initialize(applicationContext, unityGameID, testMode, object : IUnityAdsInitializationListener {
-            override fun onInitializationComplete() { 
-                Log.d("UNITY_ADS", "Unity Initialization Complete") 
-            }
+            override fun onInitializationComplete() { Log.d("UNITY_ADS", "Unity Complete") }
             override fun onInitializationFailed(error: UnityAds.UnityAdsInitializationError?, message: String?) {
-                Log.e("UNITY_ADS", "Unity Initialization Failed: $message")
+                Log.e("UNITY_ADS", "Unity Failed: $message")
             }
         })
 
-        // 2. Navigation Logic
+        // 2. Navigation
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
 
+        // No imports needed for fragments because they share the same package!
         if (savedInstanceState == null) {
             loadFragment(DashboardFragment())
         }
@@ -45,7 +40,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_home -> DashboardFragment()
                 R.id.nav_market -> MarketFragment()
                 R.id.nav_offers -> OffersFragment()
-                R.id.nav_support -> SupportFragment() // Linked the SupportFragment here
+                R.id.nav_support -> SupportFragment()
                 else -> DashboardFragment()
             }
             loadFragment(fragment)
