@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView 
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -18,112 +17,102 @@
             android:layout_height="wrap_content"
             android:text="MAGIC MARKET"
             android:textColor="#FF0033"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp"/>
+            android:textSize="28sp"
+            android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Convert trapped value into liquid cash."
-            android:textColor="#888888"
-            android:textSize="14sp"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginBottom="24dp"
+            android:text="Unlock hidden value. Instant, safe, and reliable."
+            android:textColor="#888888" />
 
         <GridLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:columnCount="2"
             android:alignmentMode="alignMargins"
-            android:layout_marginBottom="20dp">
+            android:columnOrderPreserved="false">
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_airtime_to_cash"
                 android:layout_width="0dp"
-                android:layout_height="160dp"
+                android:layout_height="140dp"
                 android:layout_columnWeight="1"
                 android:layout_margin="8dp"
                 app:cardBackgroundColor="#121212"
                 app:cardCornerRadius="16dp"
                 app:strokeColor="#FF0033"
                 app:strokeWidth="1dp">
-                
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:padding="12dp">
-                    <ImageView
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:src="@android:drawable/ic_menu_rotate"
-                        app:tint="#FF0033"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Airtime to Cash"
-                        android:textColor="#FFFFFF"
-                        android:textStyle="bold"
-                        android:layout_marginTop="12dp"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Rate: 70%"
-                        android:textColor="#FF0033"
-                        android:textSize="12sp"
-                        android:layout_marginTop="4dp"/>
+                    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_call" app:tint="#FF0033"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Airtime to Cash" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginTop="8dp" android:gravity="center"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Rate: 70%" android:textColor="#FF0033" android:textSize="12sp"/>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_bonga_to_cash"
                 android:layout_width="0dp"
-                android:layout_height="160dp"
+                android:layout_height="140dp"
                 android:layout_columnWeight="1"
                 android:layout_margin="8dp"
                 app:cardBackgroundColor="#121212"
                 app:cardCornerRadius="16dp"
                 app:strokeColor="#FF0033"
                 app:strokeWidth="1dp">
-                
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:padding="12dp">
-                    <ImageView
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:src="@android:drawable/btn_star_big_on"
-                        app:tint="#FF0033"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Bonga to Cash"
-                        android:textColor="#FFFFFF"
-                        android:textStyle="bold"
-                        android:layout_marginTop="12dp"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Rate: 0.10/pt"
-                        android:textColor="#FF0033"
-                        android:textSize="12sp"
-                        android:layout_marginTop="4dp"/>
+                    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/btn_star_big_on" app:tint="#FF0033"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bonga to Cash" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginTop="8dp" android:gravity="center"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Rate: 0.10/pt" android:textColor="#FF0033" android:textSize="12sp"/>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_buy_airtime"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:layout_columnSpan="2"
+                android:layout_margin="8dp"
+                app:cardBackgroundColor="#121212"
+                app:cardCornerRadius="16dp"
+                app:strokeColor="#FF0033"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+                    <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_menu_send" app:tint="#FF0033"/>
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Buy Cheap Airtime" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="16sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Flat 2% Discount on all orders" android:textColor="#FF0033" android:textSize="12sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </GridLayout>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="8dp"
+            android:layout_marginTop="24dp"
             app:cardBackgroundColor="#121212"
-            app:cardCornerRadius="16dp">
+            app:cardCornerRadius="20dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -137,61 +126,57 @@
                     android:text="CLAIM YOUR PAYMENT"
                     android:textColor="#FFFFFF"
                     android:textStyle="bold"
-                    android:letterSpacing="0.05"/>
+                    android:textSize="18sp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Enter the M-Pesa Message / Ref Code below after sending."
-                    android:textColor="#666666"
+                    android:text="1. Send funds/points to the details below.\n2. Paste the Confirmation Message/Ref Code here."
+                    android:textColor="#888888"
                     android:textSize="12sp"
-                    android:layout_marginTop="4dp"/>
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="16dp"/>
 
                 <EditText
-                    android:id="@+id/et_trans_id"
-                    android:layout_width="match_parent"
-                    android:layout_height="55dp"
-                    android:hint="Example: RDK2HJK98"
-                    android:textColorHint="#333333"
-                    android:textColor="#FFFFFF"
-                    android:backgroundTint="#FF0033"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginTop="16dp"
-                    android:maxLines="1"
-                    android:inputType="textCapCharacters"/>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_verify"
+                    android:id="@+id/et_payment_ref"
                     android:layout_width="match_parent"
                     android:layout_height="60dp"
-                    android:text="SUBMIT FOR VERIFICATION"
-                    android:backgroundTint="#FF0033"
+                    android:background="@drawable/bg_edittext"
+                    android:hint="Example: RDK2HJK98..."
                     android:textColor="#FFFFFF"
-                    android:textStyle="bold"
+                    android:textColorHint="#444444"
+                    android:padding="12dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_submit_verification"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
                     android:layout_marginTop="16dp"
-                    app:cornerRadius="12dp"/>
+                    android:text="SUBMIT FOR VERIFICATION"
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp"
+                    app:backgroundTint="#FF0033"/>
+
+                <TextView
+                    android:id="@+id/tv_till_info"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Send to Till: 3043489 (Tap to copy)"
+                    android:textColor="#FF0033"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:layout_marginTop="20dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Verification takes 5-15 minutes. Manual approval by Magic Tortoise team."
+                    android:textColor="#444444"
+                    android:textSize="10sp"
+                    android:gravity="center"
+                    android:layout_marginTop="8dp"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:id="@+id/tv_hustle_number"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Send to: 07XXXXXXXX (Tap to copy)"
-            android:textColor="#FF0033"
-            android:gravity="center"
-            android:layout_marginTop="32dp"
-            android:textSize="14sp"
-            android:textStyle="bold"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Verification takes 5-15 minutes. Manual approval by Magic Tortoise team."
-            android:textColor="#444444"
-            android:gravity="center"
-            android:layout_marginTop="8dp"
-            android:textSize="11sp"/>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
