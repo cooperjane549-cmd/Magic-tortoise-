@@ -28,19 +28,20 @@ class AdminActivity : AppCompatActivity() {
 
     private fun fetchData() {
         val rootRef = FirebaseDatabase.getInstance(DB_URL).reference
-        val nodes = listOf("advertiser_requests", "exchange_offers")
+        // Added 'mini_task_submissions' so you can see the TikTok proofs
+        val nodes = listOf("advertiser_requests", "exchange_offers", "mini_task_submissions")
 
         for (node in nodes) {
             rootRef.child(node).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    // Remove old items from this specific node to prevent duplicates
-                    requestList.removeAll { it.type == node || (it.type.isEmpty() && node == "advertiser_requests") }
+                    // Clear existing items for this node to avoid duplicates on refresh
+                    requestList.removeAll { it.nodeSource == node }
 
                     for (child in snapshot.children) {
                         val req = child.getValue(AdminRequest::class.java)
                         if (req != null && req.status == "pending") {
                             req.id = child.key ?: ""
-                            req.type = node
+                            req.nodeSource = node // Helper field to remember where it came from
                             requestList.add(req)
                         }
                     }
@@ -55,15 +56,41 @@ class AdminActivity : AppCompatActivity() {
     }
 
     private fun approveRequest(request: AdminRequest) {
-        val node = if (request.type.isNotEmpty()) request.type else "advertiser_requests"
+        val db = FirebaseDatabase.getInstance(DB_URL).reference
         
-        FirebaseDatabase.getInstance(DB_URL).reference
-            .child(node).child(request.id).child("status").setValue("Active")
+        // 1. Update the status of the request
+        db.child(request.nodeSource).child(request.id).child("status").setValue("Approved")
             .addOnSuccessListener {
-                Toast.makeText(this, "Approved successfully!", Toast.LENGTH_SHORT).show()
+                
+                // 2. If it's a TikTok Task, automatically add KES 2.0 to user balance
+                if (request.nodeSource == "mini_task_submissions") {
+                    rewardUser(request.userId, 2.0)
+                }
+                
+                Toast.makeText(this, "Approved & Processed!", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+    }
+
+    private fun rewardUser(userId: String, amount: Double) {
+        val userBalanceRef = FirebaseDatabase.getInstance(DB_URL).reference
+            .child("users").child(userId).child("balance")
+
+        // Use a transaction to safely update the balance
+        userBalanceRef.runTransaction(object : Transaction.Handler {
+            override fun doTransaction(mutableData: MutableData): Transaction.Result {
+                val currentBalance = mutableData.getValue(Double::class.java) ?: 0.0
+                mutableData.value = currentBalance + amount
+                return Transaction.success(mutableData)
+            }
+
+            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
+                if (committed) {
+                    // Success
+                }
+            }
+        })
     }
 }
