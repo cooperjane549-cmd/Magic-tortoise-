@@ -11,14 +11,14 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class AdminAdapter(
-    private val requests: List<AdminRequest>,
+    private var requests: List<AdminRequest>, // Changed to var so we can update it
     private val onApprove: (AdminRequest) -> Unit
 ) : RecyclerView.Adapter<AdminAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvType: TextView = view.findViewById(R.id.tv_request_type)
         val tvDetail: TextView = view.findViewById(R.id.tv_request_detail)
-        val ivScreenshot: ImageView = view.findViewById(R.id.iv_screenshot) // Add this to your XML
+        val ivScreenshot: ImageView = view.findViewById(R.id.iv_screenshot)
         val btnApprove: Button = view.findViewById(R.id.btn_approve)
         val btnReject: Button = view.findViewById(R.id.btn_reject)
     }
@@ -31,39 +31,53 @@ class AdminAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val request = requests[position]
         
-        holder.tvType.text = request.type.ifEmpty { "Unknown Task" }
+        // Safe check for Type
+        holder.tvType.text = if (request.type.isNullOrEmpty()) "Unknown Task" else request.type
         
-        // Show M-Pesa code or Social Link based on what is available
-        val details = if (request.mpesaCode.isNotEmpty()) {
-            "M-Pesa: ${request.mpesaCode}"
+        // Safe check for Details to prevent null pointer crashes
+        val code = request.mpesaCode ?: ""
+        val link = request.socialLink ?: ""
+        
+        val details = if (code.isNotEmpty()) {
+            "M-Pesa: $code"
+        } else if (link.isNotEmpty()) {
+            "Link: $link"
         } else {
-            "Link: ${request.socialLink}"
+            "User ID: ${request.userId}"
         }
         holder.tvDetail.text = details
 
-        // --- NEW IMAGE DECODING LOGIC ---
-        if (!request.screenshotBase64.isNullOrEmpty()) {
+        // --- SAFE IMAGE DECODING ---
+        val base64String = request.screenshotBase64
+        if (!base64String.isNullOrEmpty()) {
             try {
-                val decodedBytes = Base64.decode(request.screenshotBase64, Base64.DEFAULT)
+                // Remove potential whitespace that causes decoding crashes
+                val cleanString = base64String.trim()
+                val decodedBytes = Base64.decode(cleanString, Base64.DEFAULT)
                 val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                holder.ivScreenshot.visibility = View.VISIBLE
-                holder.ivScreenshot.setImageBitmap(bitmap)
+                
+                if (bitmap != null) {
+                    holder.ivScreenshot.visibility = View.VISIBLE
+                    holder.ivScreenshot.setImageBitmap(bitmap)
+                } else {
+                    holder.ivScreenshot.visibility = View.GONE
+                }
             } catch (e: Exception) {
                 holder.ivScreenshot.visibility = View.GONE
             }
         } else {
             holder.ivScreenshot.visibility = View.GONE
         }
-        // --------------------------------
 
-        holder.btnApprove.setOnClickListener { 
-            onApprove(request) 
-        }
-        
-        holder.btnReject.setOnClickListener { 
-            holder.itemView.alpha = 0.5f 
-        }
+        holder.btnApprove.setOnClickListener { onApprove(request) }
+        holder.btnReject.setOnClickListener { holder.itemView.alpha = 0.5f }
     }
 
     override fun getItemCount() = requests.size
+
+    // Add this helper function to update data safely
+    fun updateData(newList: List<AdminRequest>) {
+        this.requests = newList
+        notifyDataSetChanged()
+    }
 }
