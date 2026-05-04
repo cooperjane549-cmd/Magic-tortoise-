@@ -20,29 +20,17 @@ class AdminAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        // This uses the layout we created earlier: item_admin_request.xml
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_admin_request, parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_admin_request, parent, false)
         return ViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val request = requests[position]
-
-        holder.tvType.text = "TYPE: ${request.type}"
-        
-        // Shows the M-Pesa code and the Link so you can verify them
+        holder.tvType.text = request.type
         holder.tvDetail.text = "Code: ${request.mpesaCode}\nLink: ${request.socialLink}"
 
-        // When you click this, it triggers the approveTask function in AdminActivity
-        holder.btnApprove.setOnClickListener { 
-            onApprove(request) 
-        }
-        
-        holder.btnReject.setOnClickListener {
-            // Logic for rejection can be added here (e.g., deleting from Firebase)
-            holder.itemView.visibility = View.GONE
-        }
+        holder.btnApprove.setOnClickListener { onApprove(request) }
+        holder.btnReject.setOnClickListener { /* Add delete logic if needed */ }
     }
 
     override fun getItemCount() = requests.size
