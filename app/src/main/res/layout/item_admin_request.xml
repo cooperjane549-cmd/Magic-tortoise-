@@ -30,14 +30,16 @@
             android:textColor="#FFFFFF"
             android:layout_marginTop="4dp"/>
 
-        <TextView
-            android:id="@+id/tv_view_proof"
-            android:layout_width="wrap_content"
+        <ImageView
+            android:id="@+id/iv_screenshot"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="VIEW PROOF SCREENSHOT"
-            android:textColor="#3498db"
-            android:layout_marginTop="8dp"
-            android:visibility="gone"/>
+            android:layout_marginTop="10dp"
+            android:adjustViewBounds="true"
+            android:maxHeight="300dp"
+            android:scaleType="fitCenter"
+            android:visibility="gone"
+            android:background="#333333"/>
 
         <LinearLayout
             android:layout_width="match_parent"
