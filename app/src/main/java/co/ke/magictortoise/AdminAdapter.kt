@@ -26,11 +26,22 @@ class AdminAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val request = requests[position]
-        holder.tvType.text = request.type
-        holder.tvDetail.text = "Code: ${request.mpesaCode}\nLink: ${request.socialLink}"
+        
+        // Use default values if data is missing to prevent blank text
+        holder.tvType.text = request.type.ifEmpty { "Unknown Task" }
+        
+        // Format the detail view clearly
+        val details = "Code: ${request.mpesaCode}\nLink: ${request.socialLink}"
+        holder.tvDetail.text = details
 
-        holder.btnApprove.setOnClickListener { onApprove(request) }
-        holder.btnReject.setOnClickListener { /* Add delete logic if needed */ }
+        holder.btnApprove.setOnClickListener { 
+            onApprove(request) 
+        }
+        
+        holder.btnReject.setOnClickListener { 
+            // Optional: You could add a 'delete' call here later
+            holder.itemView.alpha = 0.5f // Gray it out to show it's ignored
+        }
     }
 
     override fun getItemCount() = requests.size
