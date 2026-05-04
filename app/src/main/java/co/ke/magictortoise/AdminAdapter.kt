@@ -20,6 +20,7 @@ class AdminAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        // This uses the layout we created earlier: item_admin_request.xml
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_admin_request, parent, false)
         return ViewHolder(view)
@@ -30,17 +31,16 @@ class AdminAdapter(
 
         holder.tvType.text = "TYPE: ${request.type}"
         
-        // Customizing details based on what you need to check
-        if (request.type == "Promote Account") {
-            holder.tvDetail.text = "Code: ${request.mpesaCode}\nLink: ${request.socialLink}"
-        } else {
-            holder.tvDetail.text = "User ID: ${request.userId.takeLast(6)}\nTask: TikTok Proof"
-        }
+        // Shows the M-Pesa code and the Link so you can verify them
+        holder.tvDetail.text = "Code: ${request.mpesaCode}\nLink: ${request.socialLink}"
 
-        holder.btnApprove.setOnClickListener { onApprove(request) }
+        // When you click this, it triggers the approveTask function in AdminActivity
+        holder.btnApprove.setOnClickListener { 
+            onApprove(request) 
+        }
         
-        // For now, Reject just hides it (You can add delete logic later)
         holder.btnReject.setOnClickListener {
+            // Logic for rejection can be added here (e.g., deleting from Firebase)
             holder.itemView.visibility = View.GONE
         }
     }
