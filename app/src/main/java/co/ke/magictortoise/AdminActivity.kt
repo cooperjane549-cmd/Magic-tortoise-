@@ -18,7 +18,10 @@ class AdminActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_admin)
 
-        database = FirebaseDatabase.getInstance().reference.child("advertiser_requests")
+        // FIXED: Pointing specifically to your Database URL from the screenshot
+        val databaseUrl = "https://magic-tortoise-default-rtdb.firebaseio.com/"
+        database = FirebaseDatabase.getInstance(databaseUrl).getReference("advertiser_requests")
+
         recyclerView = findViewById(R.id.rv_admin_requests)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
@@ -37,20 +40,25 @@ class AdminActivity : AppCompatActivity() {
                 for (child in snapshot.children) {
                     val request = child.getValue(AdminRequest::class.java)
                     if (request != null) {
-                        request.id = child.key ?: ""
-                        // Only show if status is pending
-                        if (request.status == "pending") {
-                            requestList.add(request)
+                        // Manually setting the ID from the Firebase key
+                        val updatedRequest = request.copy(id = child.key ?: "")
+                        
+                        // Check if status is pending (lowercase must match Firebase)
+                        if (updatedRequest.status == "pending") {
+                            requestList.add(updatedRequest)
                         }
                     }
                 }
                 adapter.notifyDataSetChanged()
-                if(requestList.isEmpty()) {
+                
+                if (requestList.isEmpty()) {
                     Toast.makeText(this@AdminActivity, "No pending requests found", Toast.LENGTH_SHORT).show()
                 }
             }
+
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@AdminActivity, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                // This will now give you a specific error if the URL or UID is still wrong
+                Toast.makeText(this@AdminActivity, "Firebase Error: ${error.message}", Toast.LENGTH_LONG).show()
             }
         })
     }
@@ -59,6 +67,9 @@ class AdminActivity : AppCompatActivity() {
         database.child(request.id).child("status").setValue("Active")
             .addOnSuccessListener {
                 Toast.makeText(this, "Task is now LIVE!", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 }
