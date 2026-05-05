@@ -16,51 +16,44 @@ class AdminActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_admin)
 
-        // 1. Initialize UI components
         val recyclerView = findViewById<RecyclerView>(R.id.rv_admin_requests)
         
-        // 2. Set LayoutManager first to avoid immediate crash on data load
+        // Ensure LayoutManager is set before data arrives
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        // 3. Initialize Adapter with the list and approve/pay logic
+        // Initialize Adapter
         adapter = AdminAdapter(requestList) { request -> 
             approveRequest(request) 
         }
         recyclerView.adapter = adapter
 
-        // 4. Start listening to Firebase
         fetchData()
     }
 
     private fun fetchData() {
         val rootRef = FirebaseDatabase.getInstance().reference
-        // Listening to all three business nodes
         val nodes = listOf("advertiser_requests", "exchange_offers", "mini_task_submissions")
 
         for (node in nodes) {
             rootRef.child(node).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    // Remove items from this specific node to prevent list duplication
                     requestList.removeAll { it.nodeSource == node }
 
                     for (child in snapshot.children) {
                         try {
-                            // Map Firebase data to our AdminRequest model
                             val req = child.getValue(AdminRequest::class.java)
                             
-                            // Only show items that are still "pending"
+                            // Load if status is pending or empty
                             if (req != null && (req.status == "pending" || req.status.isNullOrEmpty())) {
                                 req.id = child.key ?: ""
                                 req.nodeSource = node
                                 requestList.add(req)
                             }
                         } catch (e: Exception) {
-                            // If one entry is formatted wrong (old data), skip it instead of crashing
                             continue 
                         }
                     }
 
-                    // CRITICAL: Update the UI on the Main Thread to prevent "crushing"
                     runOnUiThread {
                         adapter.updateData(ArrayList(requestList))
                     }
@@ -68,7 +61,7 @@ class AdminActivity : AppCompatActivity() {
 
                 override fun onCancelled(error: DatabaseError) {
                     runOnUiThread {
-                        Toast.makeText(this@AdminActivity, "Database Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@AdminActivity, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             })
@@ -77,22 +70,29 @@ class AdminActivity : AppCompatActivity() {
 
     private fun approveRequest(request: AdminRequest) {
         if (request.id.isEmpty() || request.nodeSource.isEmpty()) {
-            Toast.makeText(this, "Error: Invalid Request ID", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error: Invalid Request", Toast.LENGTH_SHORT).show()
             return
         }
 
         val db = FirebaseDatabase.getInstance().reference
         
-        // 1. Update the status in the specific node (e.g., mini_task_submissions)
-        db.child(request.nodeSource).child(request.id).child("status").setValue("Approved")
+        // --- LOGIC SYNC ---
+        // For advertiser_requests (Paid Promo), we set status to "Active" so it shows in the app market.
+        // For mini_task_submissions (User proof), we set status to "Approved".
+        val finalStatus = if (request.nodeSource == "advertiser_requests") "Active" else "Approved"
+
+        db.child(request.nodeSource).child(request.id).child("status").setValue(finalStatus)
             .addOnSuccessListener {
                 
-                // 2. If it's a TikTok Task, pay the user KES 2.0 automatically
+                // If it's a Proof Submission, reward the user KES 2.0
                 if (request.nodeSource == "mini_task_submissions" && !request.userId.isNullOrEmpty()) {
                     rewardUser(request.userId, 2.0)
+                    Toast.makeText(this, "Proof Approved! KES 2.0 Paid.", Toast.LENGTH_SHORT).show()
+                } else if (request.nodeSource == "advertiser_requests") {
+                    Toast.makeText(this, "Promotion is now LIVE (Active)!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Request Approved", Toast.LENGTH_SHORT).show()
                 }
-                
-                Toast.makeText(this, "Success: Approved", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -103,7 +103,6 @@ class AdminActivity : AppCompatActivity() {
         val userBalanceRef = FirebaseDatabase.getInstance().reference
             .child("users").child(userId).child("balance")
 
-        // Use a Transaction to safely add money without overwriting current balance
         userBalanceRef.runTransaction(object : Transaction.Handler {
             override fun doTransaction(mutableData: MutableData): Transaction.Result {
                 val currentBalance = mutableData.getValue(Double::class.java) ?: 0.0
@@ -112,7 +111,7 @@ class AdminActivity : AppCompatActivity() {
             }
 
             override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                // Balance update finished
+                // Balance updated successfully
             }
         })
     }
