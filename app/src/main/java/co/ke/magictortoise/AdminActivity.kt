@@ -11,73 +11,91 @@ class AdminActivity : AppCompatActivity() {
 
     private lateinit var adapter: AdminAdapter
     private val requestList = mutableListOf<AdminRequest>()
-    // Removed the hardcoded DB_URL to prevent connection crashes
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_admin)
 
+        // 1. Initialize UI components
         val recyclerView = findViewById<RecyclerView>(R.id.rv_admin_requests)
+        
+        // 2. Set LayoutManager first to avoid immediate crash on data load
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        // Initialize adapter with the list and the approval logic
-        adapter = AdminAdapter(requestList) { request -> approveRequest(request) }
+        // 3. Initialize Adapter with the list and approve/pay logic
+        adapter = AdminAdapter(requestList) { request -> 
+            approveRequest(request) 
+        }
         recyclerView.adapter = adapter
 
+        // 4. Start listening to Firebase
         fetchData()
     }
 
     private fun fetchData() {
-        // Use default instance - safer than a hardcoded string
         val rootRef = FirebaseDatabase.getInstance().reference
+        // Listening to all three business nodes
         val nodes = listOf("advertiser_requests", "exchange_offers", "mini_task_submissions")
 
         for (node in nodes) {
             rootRef.child(node).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    // Filter out old items from this specific node to prevent duplicates
+                    // Remove items from this specific node to prevent list duplication
                     requestList.removeAll { it.nodeSource == node }
 
                     for (child in snapshot.children) {
                         try {
+                            // Map Firebase data to our AdminRequest model
                             val req = child.getValue(AdminRequest::class.java)
-                            if (req != null && req.status == "pending") {
+                            
+                            // Only show items that are still "pending"
+                            if (req != null && (req.status == "pending" || req.status.isNullOrEmpty())) {
                                 req.id = child.key ?: ""
-                                req.nodeSource = node // Track which folder this came from
+                                req.nodeSource = node
                                 requestList.add(req)
                             }
                         } catch (e: Exception) {
-                            // If one item is corrupted/null, skip it instead of crashing the app
+                            // If one entry is formatted wrong (old data), skip it instead of crashing
                             continue 
                         }
                     }
-                    // Use the safe update function from the Adapter
-                    adapter.updateData(ArrayList(requestList))
+
+                    // CRITICAL: Update the UI on the Main Thread to prevent "crushing"
+                    runOnUiThread {
+                        adapter.updateData(ArrayList(requestList))
+                    }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    Toast.makeText(this@AdminActivity, "DB Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                    runOnUiThread {
+                        Toast.makeText(this@AdminActivity, "Database Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             })
         }
     }
 
     private fun approveRequest(request: AdminRequest) {
+        if (request.id.isEmpty() || request.nodeSource.isEmpty()) {
+            Toast.makeText(this, "Error: Invalid Request ID", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val db = FirebaseDatabase.getInstance().reference
         
-        // 1. Update the status to 'Approved'
+        // 1. Update the status in the specific node (e.g., mini_task_submissions)
         db.child(request.nodeSource).child(request.id).child("status").setValue("Approved")
             .addOnSuccessListener {
                 
-                // 2. If it's a TikTok Task, pay the user KES 2.0
-                if (request.nodeSource == "mini_task_submissions" && request.userId.isNotEmpty()) {
+                // 2. If it's a TikTok Task, pay the user KES 2.0 automatically
+                if (request.nodeSource == "mini_task_submissions" && !request.userId.isNullOrEmpty()) {
                     rewardUser(request.userId, 2.0)
                 }
                 
-                Toast.makeText(this, "Success: Request Approved", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Success: Approved", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
-                Toast.makeText(this, "Approval Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -85,6 +103,7 @@ class AdminActivity : AppCompatActivity() {
         val userBalanceRef = FirebaseDatabase.getInstance().reference
             .child("users").child(userId).child("balance")
 
+        // Use a Transaction to safely add money without overwriting current balance
         userBalanceRef.runTransaction(object : Transaction.Handler {
             override fun doTransaction(mutableData: MutableData): Transaction.Result {
                 val currentBalance = mutableData.getValue(Double::class.java) ?: 0.0
@@ -93,7 +112,7 @@ class AdminActivity : AppCompatActivity() {
             }
 
             override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                // Balance updated in Firebase
+                // Balance update finished
             }
         })
     }
