@@ -1,12 +1,17 @@
 package co.ke.magictortoise
 
 data class AdminRequest(
-    var id: String = "",                // Changed to var so we can set child.key
-    var userId: String = "",            // Changed to var for safety
-    var type: String = "",              // Changed to var so we can set the node name
-    var nodeSource: String = "",        
-    var mpesaCode: String = "",         // Changed to var
-    var socialLink: String = "",        // Changed to var
-    var screenshotBase64: String = "",  // Changed to var
-    var status: String = "pending"      // Changed to var
+    var id: String = "",
+    var userId: String = "",
+    var type: String = "",
+    var nodeSource: String = "",
+    var mpesaCode: String = "",
+    var socialLink: String = "",
+    var screenshotBase64: String = "",
+    var status: String = "pending",
+    
+    // NEW FIELDS for Data & Deposits
+    var mb: Int = 0,            // To see if they bought 300MB or 1GB
+    var price: Double = 0.0,    // To see how much they paid
+    var timestamp: Long = 0     // To know when they requested it
 )
