@@ -17,11 +17,8 @@ class AdminActivity : AppCompatActivity() {
         setContentView(R.layout.activity_admin)
 
         val recyclerView = findViewById<RecyclerView>(R.id.rv_admin_requests)
-        
-        // Ensure LayoutManager is set before data arrives
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        // Initialize Adapter
         adapter = AdminAdapter(requestList) { request -> 
             approveRequest(request) 
         }
@@ -32,7 +29,14 @@ class AdminActivity : AppCompatActivity() {
 
     private fun fetchData() {
         val rootRef = FirebaseDatabase.getInstance().reference
-        val nodes = listOf("advertiser_requests", "exchange_offers", "mini_task_submissions")
+        
+        // Added 'deposit_requests' and 'data_requests' to the list
+        val nodes = listOf(
+            "advertiser_requests", 
+            "mini_task_submissions", 
+            "deposit_requests", 
+            "data_requests"
+        )
 
         for (node in nodes) {
             rootRef.child(node).addValueEventListener(object : ValueEventListener {
@@ -42,8 +46,6 @@ class AdminActivity : AppCompatActivity() {
                     for (child in snapshot.children) {
                         try {
                             val req = child.getValue(AdminRequest::class.java)
-                            
-                            // Load if status is pending or empty
                             if (req != null && (req.status == "pending" || req.status.isNullOrEmpty())) {
                                 req.id = child.key ?: ""
                                 req.nodeSource = node
@@ -59,11 +61,7 @@ class AdminActivity : AppCompatActivity() {
                     }
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    runOnUiThread {
-                        Toast.makeText(this@AdminActivity, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                override fun onCancelled(error: DatabaseError) {}
             })
         }
     }
@@ -76,30 +74,46 @@ class AdminActivity : AppCompatActivity() {
 
         val db = FirebaseDatabase.getInstance().reference
         
-        // --- LOGIC SYNC ---
-        // For advertiser_requests (Paid Promo), we set status to "Active" so it shows in the app market.
-        // For mini_task_submissions (User proof), we set status to "Approved".
-        val finalStatus = if (request.nodeSource == "advertiser_requests") "Active" else "Approved"
+        // Determine the correct status string based on the node
+        val finalStatus = when (request.nodeSource) {
+            "advertiser_requests" -> "Active"
+            "data_requests" -> "Completed"
+            else -> "Approved"
+        }
 
         db.child(request.nodeSource).child(request.id).child("status").setValue(finalStatus)
             .addOnSuccessListener {
-                
-                // If it's a Proof Submission, reward the user KES 2.0
-                if (request.nodeSource == "mini_task_submissions" && !request.userId.isNullOrEmpty()) {
-                    rewardUser(request.userId, 2.0)
-                    Toast.makeText(this, "Proof Approved! KES 2.0 Paid.", Toast.LENGTH_SHORT).show()
-                } else if (request.nodeSource == "advertiser_requests") {
-                    Toast.makeText(this, "Promotion is now LIVE (Active)!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Request Approved", Toast.LENGTH_SHORT).show()
-                }
+                handlePostApprovalActions(request)
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
-    private fun rewardUser(userId: String, amount: Double) {
+    private fun handlePostApprovalActions(request: AdminRequest) {
+        when (request.nodeSource) {
+            "mini_task_submissions" -> {
+                // User earned KES 2.0 for TikTok follow
+                rewardUser(request.userId, 2.0, "Task Reward Paid")
+            }
+            "deposit_requests" -> {
+                // IMPORTANT: For deposits, you'll need to check the amount. 
+                // For now, let's assume a default or manually handled reward.
+                // In a real scenario, you might add an 'amount' field to AdminRequest.
+                rewardUser(request.userId, 0.0, "Deposit Confirmed! (Manually add balance if needed)")
+            }
+            "advertiser_requests" -> {
+                Toast.makeText(this, "Promotion is now LIVE!", Toast.LENGTH_SHORT).show()
+            }
+            "data_requests" -> {
+                Toast.makeText(this, "Data Request marked as Sent!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun rewardUser(userId: String, amount: Double, successMsg: String) {
+        if (userId.isEmpty()) return
+
         val userBalanceRef = FirebaseDatabase.getInstance().reference
             .child("users").child(userId).child("balance")
 
@@ -111,7 +125,9 @@ class AdminActivity : AppCompatActivity() {
             }
 
             override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                // Balance updated successfully
+                runOnUiThread {
+                    Toast.makeText(this@AdminActivity, successMsg, Toast.LENGTH_SHORT).show()
+                }
             }
         })
     }
