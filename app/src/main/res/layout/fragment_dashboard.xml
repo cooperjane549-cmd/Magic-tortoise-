@@ -47,7 +47,7 @@
                     android:layout_marginTop="4dp"/>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_deposit"
+                    android:id="@+id/tv_deposit_cash"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -93,7 +93,7 @@
                         android:orientation="vertical">
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="300 MB" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="16sp"/>
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DAILY" android:textColor="#888888" android:textSize="10sp"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/tv_price_daily" android:text="KES 20" android:textColor="#FF0033"/>
+                        <TextView android:id="@+id/tv_price_daily" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KES 20" android:textColor="#FF0033"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -107,7 +107,7 @@
                     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1 GB" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="16sp"/>
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1-HOUR BLAZE" android:textColor="#888888" android:textSize="10sp"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/tv_price_hourly" android:text="KES 15" android:textColor="#FF0033"/>
+                        <TextView android:id="@+id/tv_price_hourly" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KES 15" android:textColor="#FF0033"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -120,7 +120,7 @@
                     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4 GB" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="16sp"/>
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DAILY HEAVY" android:textColor="#888888" android:textSize="10sp"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/tv_price_heavy" android:text="KES 99" android:textColor="#FF0033"/>
+                        <TextView android:id="@+id/tv_price_heavy" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KES 99" android:textColor="#FF0033"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
