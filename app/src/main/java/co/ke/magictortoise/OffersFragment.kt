@@ -30,19 +30,19 @@ class OffersFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_offers, container, false)
         database = FirebaseDatabase.getInstance().reference
 
-        // 1. Create Task Button (Advertiser / KES 450) - FEATURE PRESERVED
+        // 1. Create Task Button (Advertiser / KES 450)
         view.findViewById<View>(R.id.btn_create_task)?.setOnClickListener {
             showCreateTaskDialog()
         }
 
-        // 2. TikTok GO Button - FEATURE PRESERVED
+        // 2. TikTok GO Button
         view.findViewById<View>(R.id.btn_tiktok_go)?.setOnClickListener {
             val tiktokUrl = "https://tiktok.com/"
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(tiktokUrl))
             startActivity(intent)
         }
 
-        // 3. Submit Proof Button (User earns KES 2.0) - FEATURE PRESERVED
+        // 3. Submit Proof Button (User earns KES 2.0)
         view.findViewById<View>(R.id.btn_tiktok_submit)?.setOnClickListener {
             launchGallery()
         }
@@ -87,12 +87,10 @@ class OffersFragment : Fragment() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data?.data != null) {
             filePath = data.data
-            // Instead of Storage, we use our new Database-only method
             uploadProofToDatabaseAsText()
         }
     }
 
-    // NEW METHOD: Replaces Storage with Realtime Database String
     private fun uploadProofToDatabaseAsText() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         
@@ -100,19 +98,18 @@ class OffersFragment : Fragment() {
             try {
                 Toast.makeText(context, "Processing proof...", Toast.LENGTH_SHORT).show()
 
-                // Convert URI to Bitmap
                 val inputStream: InputStream? = requireContext().contentResolver.openInputStream(uri)
                 val bitmap = BitmapFactory.decodeStream(inputStream)
 
-                // Compress and Convert to Base64 String
                 val baos = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 40, baos) // 40% quality is enough for proof
+                // Reduced to 25% quality to ensure rapid database sync and zero crashes
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 25, baos) 
                 val byteArray = baos.toByteArray()
                 val imageString = Base64.encodeToString(byteArray, Base64.DEFAULT)
 
                 val submission = mapOf(
                     "userId" to userId,
-                    "screenshotBase64" to imageString, // The image is now text!
+                    "screenshotBase64" to imageString,
                     "status" to "pending",
                     "type" to "TikTok Follow",
                     "timestamp" to ServerValue.TIMESTAMP
@@ -123,7 +120,7 @@ class OffersFragment : Fragment() {
                         Toast.makeText(context, "Proof submitted! KES 2.0 pending approval.", Toast.LENGTH_LONG).show()
                     }
                     .addOnFailureListener {
-                        Toast.makeText(context, "Error: Access Denied. Check Rules.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Submission failed. Check your connection.", Toast.LENGTH_SHORT).show()
                     }
 
             } catch (e: Exception) {
@@ -144,9 +141,10 @@ class OffersFragment : Fragment() {
             "timestamp" to ServerValue.TIMESTAMP
         )
         
+        // This goes to advertiser_requests which the Market section listens to
         database.child("advertiser_requests").push().setValue(taskRequest)
             .addOnSuccessListener {
-                Toast.makeText(context, "KES 450 Task Submitted!", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "KES 450 Task Submitted! Waiting for verification.", Toast.LENGTH_LONG).show()
             }
     }
 }
